@@ -1,5 +1,6 @@
 // src/db/schema.ts
-import { pgTable, serial, text, varchar, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp , integer, date } from 'drizzle-orm/pg-core';
+
 
 export const pharmacists = pgTable('pharmacists', {
   id: serial('id').primaryKey(), // ID ตัวเลขรันอัตโนมัติ 1, 2, 3...
@@ -20,4 +21,15 @@ export const homeContent = pgTable('home_content', {
   welcomeMessage: text('welcome_message'),
   bannerUrl: text('banner_url'), // เก็บ path ของไฟล์รูปที่เราอัปโหลด
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+
+export const laws = pgTable('laws', {
+  id: serial('id').primaryKey(),
+  category: text('category').notNull(), // เก็บหมวดหมู่ (เช่น law1, law2)
+  title: text('title').notNull(),       // ชื่อกฎหมาย
+  announcedAt: date('announced_at'),    // วันที่ประกาศ
+  order: integer('order').default(0),   // ลำดับการแสดงผล
+  pdfUrl: text('pdf_url'),              // ลิงก์ไฟล์ PDF
+  createdAt: timestamp('created_at').defaultNow(),
 });

@@ -6,6 +6,7 @@ import multipart from "@fastify/multipart";
 // Import Route ที่เราแยกไว้
 import { homeRoutes } from "./routes/home";
 import { pharmacistRoutes } from "./routes/pharmacists";
+import { lawRoutes } from "./routes/laws";
 
 const app = Fastify({ logger: true });
 
@@ -16,6 +17,7 @@ app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // รั�
 // --- 2. Register Routes (เรียกใช้ไฟล์แยก) ---
 app.register(homeRoutes);       // ✅ โหลด API หน้าแรก
 app.register(pharmacistRoutes); // ✅ โหลด API เภสัชกร
+app.register(lawRoutes);
 
 // --- 3. Start Server ---
 const start = async () => {
