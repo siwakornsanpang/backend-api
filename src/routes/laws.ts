@@ -87,4 +87,63 @@ export async function lawRoutes(app: FastifyInstance) {
     await db.delete(laws).where(eq(laws.id, parseInt(id)));
     return { success: true, message: 'ลบข้อมูลเรียบร้อย' };
   });
+
+
+  // src/routes/laws.ts
+
+  // ... (โค้ดเก่า: GET, POST) ...
+
+  // 4. PUT: แก้ไขข้อมูล
+  app.put('/laws/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const parts = req.parts();
+    
+    let title = '';
+    let announcedAt = '';
+    let order = 0;
+    let pdfUrl = '';
+    let hasNewFile = false;
+
+    // 1. หาข้อมูลเก่าก่อน
+    const existing = await db.select().from(laws).where(eq(laws.id, parseInt(id))).limit(1);
+    if (existing.length === 0) {
+        return reply.status(404).send({ message: 'ไม่พบข้อมูล' });
+    }
+
+    // 2. วนลูปรับค่าที่ส่งมาแก้ไข
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        hasNewFile = true;
+        const ext = path.extname(part.filename);
+        const filename = `laws/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
+        const fileBuffer = await streamToBuffer(part.file);
+
+        const { error } = await supabase.storage
+          .from('uploads')
+          .upload(filename, fileBuffer, { contentType: part.mimetype, upsert: true });
+
+        if (error) throw new Error('Upload failed: ' + error.message);
+
+        const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
+        pdfUrl = data.publicUrl;
+      } else {
+        if (part.fieldname === 'title') title = part.value as string;
+        if (part.fieldname === 'announcedAt') announcedAt = part.value as string;
+        if (part.fieldname === 'order') order = parseInt(part.value as string) || 0;
+      }
+    }
+
+    // 3. อัปเดตลง Database (ถ้าไม่มีไฟล์ใหม่ ให้ใช้ pdfUrl เดิม)
+    await db.update(laws).set({
+      title: title || existing[0].title,
+      announcedAt: announcedAt || null,
+      order: order,
+      ...(hasNewFile ? { pdfUrl } : {}), // อัปเดต URL เฉพาะเมื่อมีไฟล์ใหม่
+    }).where(eq(laws.id, parseInt(id)));
+
+    return { success: true, message: 'แก้ไขข้อมูลเรียบร้อย' };
+  });
+
+  // ... (โค้ดเก่า: DELETE) ...
 }
+
