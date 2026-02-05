@@ -7,6 +7,7 @@ import multipart from "@fastify/multipart";
 import { homeRoutes } from "./routes/home";
 import { pharmacistRoutes } from "./routes/pharmacists";
 import { lawRoutes } from "./routes/laws";
+import { councilRoutes } from "./routes/council";
 
 const app = Fastify({ logger: true });
 
@@ -25,6 +26,7 @@ app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // รั�
 app.register(homeRoutes);       // ✅ โหลด API หน้าแรก
 app.register(pharmacistRoutes); // ✅ โหลด API เภสัชกร
 app.register(lawRoutes);
+app.register(councilRoutes);
 
 // --- 3. Start Server ---
 const start = async () => {

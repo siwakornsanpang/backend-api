@@ -1,5 +1,6 @@
 // src/db/schema.ts
-import { pgTable, serial, text, varchar, timestamp , integer, date } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp , integer, date ,unique} from 'drizzle-orm/pg-core';
+
 
 
 export const pharmacists = pgTable('pharmacists', {
@@ -33,3 +34,21 @@ export const laws = pgTable('laws', {
   pdfUrl: text('pdf_url'),              // ลิงก์ไฟล์ PDF
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// src/db/schema.ts
+
+
+// ... ตารางอื่นๆ ...
+
+// 🔥 ตารางกรรมการสภา
+export const councilMembers = pgTable('council_members', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  position: text('position').notNull(),
+  type: text('type').notNull(), // 'elected' หรือ 'appointed'
+  imageUrl: text('image_url'),
+  order: integer('order').notNull(), // ลำดับที่ 1-12
+}, (t) => ({
+  // บังคับว่า ในประเภทเดียวกัน ห้ามมีลำดับซ้ำกัน (เช่น เลือกตั้ง ลำดับ 1 มีได้คนเดียว)
+  unq: unique().on(t.type, t.order),
+}));
