@@ -1,5 +1,6 @@
 // src/db/schema.ts
 import { pgTable, serial, text, varchar, timestamp , integer, date ,unique} from 'drizzle-orm/pg-core';
+import { stat } from 'node:fs';
 
 
 
@@ -52,4 +53,16 @@ export const pharmacists = pgTable('pharmacists', {
   registrationId: text('registration_id').notNull(), // เลขใบอนุญาต (ภ.77889)
   province: text('province'),             // จังหวัด (กรุงเทพ)
   status: text('status').default('ใช้งาน'), // สถานะ (ใช้งาน, ไม่ใช้งาน, พักใช้ใบอนุญาต)
+});
+
+export const news = pgTable('news', {
+  id: serial('id').primaryKey(),
+  order: integer('order').default(0).unique(),      // ลำดับการแสดงผล
+  title: text('title').notNull(),               // หัวข้อข่าว
+  content: text('content').notNull(),           // เนื้อหาข่าว
+  status: text('status').default('draft'), // สถานะ (draft, published)
+  category: text('category').notNull(), // หมวดหมู่ข่าว (news, activity, announcement)
+  createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
+  updateAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
+  publishedAt: timestamp('published_at').defaultNow(), // วันที่เผยแพร่
 });

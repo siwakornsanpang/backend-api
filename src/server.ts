@@ -8,6 +8,7 @@ import { homeRoutes } from "./routes/home";
 import { pharmacistRoutes } from "./routes/pharmacists";
 import { lawRoutes } from "./routes/laws";
 import { councilRoutes } from "./routes/council";
+import { newsRoutes } from "./routes/news";
 
 const app = Fastify({ logger: true });
 
@@ -27,6 +28,7 @@ app.register(homeRoutes);       // ✅ โหลด API หน้าแรก
 app.register(pharmacistRoutes); // ✅ โหลด API เภสัชกร
 app.register(lawRoutes);
 app.register(councilRoutes);
+app.register(newsRoutes);       // ✅ โหลด API ข่าวสาร 
 
 // --- 3. Start Server ---
 const start = async () => {
