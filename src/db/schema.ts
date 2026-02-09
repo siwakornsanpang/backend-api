@@ -30,17 +30,20 @@ export const laws = pgTable('laws', {
 // ... ตารางอื่นๆ ...
 
 // 🔥 ตารางกรรมการสภา
+// src/db/schema.ts
+
+// ... (ส่วนอื่นๆ เหมือนเดิม)
+
 export const councilMembers = pgTable('council_members', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   position: text('position').notNull(),
-  type: text('type').notNull(), // 'elected' หรือ 'appointed'
+  type: text('type').notNull(), 
   imageUrl: text('image_url'),
-  order: integer('order').notNull(), // ลำดับที่ 1-12
-}, (t) => ({
-  // บังคับว่า ในประเภทเดียวกัน ห้ามมีลำดับซ้ำกัน (เช่น เลือกตั้ง ลำดับ 1 มีได้คนเดียว)
-  unq: unique().on(t.type, t.order),
-}));
+  order: integer('order').notNull(), 
+} 
+// 🔥 ลบส่วน (t) => ({ unq: ... }) ตรงนี้ทิ้งไปเลยครับ ให้จบที่ปีกกาปิด } พอ
+);
 
 
 export const pharmacists = pgTable('pharmacists', {
