@@ -24,6 +24,15 @@ function sanitizeFilename(originalName: string): string {
   return `${safeName}${ext}`;
 }
 
+
+function getFilePathFromUrl(url: string): string | null {
+    if (!url) return null;
+    const marker = '/uploads/'; // ชื่อ Bucket ของคุณคือ 'uploads'
+    const parts = url.split(marker);
+    if (parts.length < 2) return null;
+    return parts[1]; // ส่วนที่อยู่หลัง /uploads/
+}
+
 export async function councilRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล
@@ -143,9 +152,39 @@ export async function councilRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบ
-  app.delete('/council/:id', async (req, reply) => {
+app.delete('/council/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-    await db.delete(councilMembers).where(eq(councilMembers.id, parseInt(id)));
+    const memberId = parseInt(id);
+
+    // 1. ค้นหาข้อมูลเดิมก่อน เพื่อเอารูปภาพ (imageUrl)
+    const target = await db.select()
+        .from(councilMembers)
+        .where(eq(councilMembers.id, memberId))
+        .limit(1);
+
+    if (target.length > 0) {
+        const member = target[0];
+
+        // 2. ถ้ามีรูปภาพ ให้ลบออกจาก Supabase Storage
+        if (member.imageUrl) {
+            const filePath = getFilePathFromUrl(member.imageUrl);
+            if (filePath) {
+                console.log(`Deleting file from Storage: ${filePath}`);
+                const { error } = await supabase.storage
+                    .from('uploads') // Bucket ชื่อ uploads
+                    .remove([filePath]);
+                
+                if (error) {
+                    console.error("❌ Failed to delete image:", error.message);
+                } else {
+                    console.log("✅ Image deleted successfully");
+                }
+            }
+        }
+    }
+
+    // 3. ลบข้อมูลใน Database ตามปกติ
+    await db.delete(councilMembers).where(eq(councilMembers.id, memberId));
     return { success: true };
   });
 }
