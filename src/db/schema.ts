@@ -63,7 +63,7 @@ export const news = pgTable('news', {
   status: text('status').default('draft'), // สถานะ (draft, published)
   category: text('category').notNull(), // หมวดหมู่ข่าว (news, activity, announcement)
   createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
-  updateAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
+  updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
   publishedAt: timestamp('published_at').defaultNow(), // วันที่เผยแพร่
 });
 
