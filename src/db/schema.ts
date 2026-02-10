@@ -22,6 +22,7 @@ export const laws = pgTable('laws', {
   announcedAt: date('announced_at'),    // วันที่ประกาศ
   order: integer('order').default(0),   // ลำดับการแสดงผล
   pdfUrl: text('pdf_url'),              // ลิงก์ไฟล์ PDF
+  status: text('status').default('online'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
