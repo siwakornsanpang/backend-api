@@ -39,4 +39,77 @@ export async function newsRoutes(app: FastifyInstance) {
     
     return result[0] || reply.status(404).send({ message: 'ไม่พบข่าว' });
   });
-}
+
+  // 3. POST: สร้างข่าวใหม่
+  app.post('/news', async (req, reply) => {
+    const { title, content, category, status, order } = req.body as {
+      title: string;
+      content: string;
+      category: 'news' | 'activity' | 'announcement';
+      status: 'draft' | 'published';
+      order: number;
+    };
+
+    if (!title || !content) {
+      return reply.status(400).send({ message: 'ต้องระบุ title และ content' });
+    }
+
+    const result = await db.insert(news).values({
+      title,
+      content,
+      category: category || 'news',
+      status: status || 'draft',
+      order: order || 0,
+      publishedAt: status === 'published' ? new Date() : null,
+    }).returning();
+
+    return { success: true, data: result[0] };
+  });
+
+  // 4. PUT: แก้ไขข่าว
+  app.put('/news/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { title, content, category, status, order } = req.body as {
+      title?: string;
+      content?: string;
+      category?: 'news' | 'activity' | 'announcement';
+      status?: 'draft' | 'published';
+      order?: number;
+    };
+
+    const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
+    if (existing.length === 0) {
+      return reply.status(404).send({ message: 'ไม่พบข่าว' });
+    }
+
+    const updateData: any = {};
+    if (title) updateData.title = title;
+    if (content) updateData.content = content;
+    if (category) updateData.category = category;
+    if (status) {
+      updateData.status = status;
+      if (status === 'published' && !existing[0].publishedAt) {
+        updateData.publishedAt = new Date();
+      }
+    }
+    if (order !== undefined) updateData.order = order;
+    updateData.updateAt = new Date();
+
+    const result = await db.update(news).set(updateData).where(eq(news.id, parseInt(id))).returning();
+
+    return { success: true, data: result[0] };
+  });
+
+  // 5. DELETE: ลบข่าว
+  app.delete('/news/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+
+    const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
+    if (existing.length === 0) {
+      return reply.status(404).send({ message: 'ไม่พบข่าว' });
+    }
+
+    await db.delete(news).where(eq(news.id, parseInt(id)));
+
+    return { success: true, message: 'ลบข่าวเรียบร้อย' };
+  });
