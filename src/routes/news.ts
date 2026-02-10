@@ -11,22 +11,22 @@ export async function newsRoutes(app: FastifyInstance) {
   // /news?category=news
   // /news?status=published
   // /news?category=activity&status=published
-  app.get('/news', async (req, reply) => {
-    const { category, status } = req.query as { category?: string; status?: string };
-    
-    const conditions = [];
+app.get('/news', async (req, reply) => {
+  const { category, status } = req.query as { category?: string; status?: string };
+  
+  const conditions = [];
 
-    if (category) conditions.push(eq(news.category, category as any));
-    if (status) conditions.push(eq(news.status, status as any));
+  if (category) conditions.push(eq(news.category, category as any));
+  if (status) conditions.push(eq(news.status, status as any));
 
-    let query = db.select().from(news);
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+  const result = await db
+    .select()
+    .from(news)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(asc(news.order));
 
-    const result = await query.orderBy(asc(news.order));
-    return result;
-  });
+  return result;
+});
 
   // 2. GET: ดึงข่าว 1 อัน ตามรหัส
   app.get('/news/:id', async (req, reply) => {
