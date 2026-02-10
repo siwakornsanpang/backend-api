@@ -66,3 +66,15 @@ export const news = pgTable('news', {
   updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
   publishedAt: timestamp('published_at').defaultNow(), // วันที่เผยแพร่
 });
+
+
+export const councilHistory = pgTable('council_history', {
+  id: serial('id').primaryKey(),
+  term: text('term').notNull(),           // 1. วาระ (เช่น "13")
+  years: text('years').notNull(),         // 2. ปีที่ดำรงตำแหน่ง (เช่น "2568-2570")
+  presidentName: text('president_name').notNull(), // 3. ชื่อนายก
+  secretaryName: text('secretary_name').notNull(), // 4. ชื่อเลขา
+  presidentImage: text('president_image'),         // 5. รูปนายก
+  secretaryImage: text('secretary_image'),         // 6. รูปเลขา
+  createdAt: timestamp('created_at').defaultNow(),
+});
