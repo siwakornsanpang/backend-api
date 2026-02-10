@@ -14,12 +14,12 @@ export async function newsRoutes(app: FastifyInstance) {
   app.get('/news', async (req, reply) => {
     const { category, status } = req.query as { category?: string; status?: string };
     
-    let query = db.select().from(news);
     const conditions = [];
 
     if (category) conditions.push(eq(news.category, category as any));
     if (status) conditions.push(eq(news.status, status as any));
 
+    let query = db.select().from(news);
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
@@ -111,5 +111,7 @@ export async function newsRoutes(app: FastifyInstance) {
 
     await db.delete(news).where(eq(news.id, parseInt(id)));
 
-    return { success: true, message: 'ลบข่าวเรียบร้อย' };
-  });
+      return { success: true, message: 'ลบข่าวเรียบร้อย' };
+    });
+  
+  }
