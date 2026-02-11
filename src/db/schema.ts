@@ -1,5 +1,5 @@
 // src/db/schema.ts
-import { pgTable, serial, text, varchar, timestamp , integer, date ,unique} from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean } from 'drizzle-orm/pg-core';
 import { stat } from 'node:fs';
 
 
@@ -22,6 +22,7 @@ export const laws = pgTable('laws', {
   announcedAt: date('announced_at'),    // วันที่ประกาศ
   order: integer('order').default(0),   // ลำดับการแสดงผล
   pdfUrl: text('pdf_url'),              // ลิงก์ไฟล์ PDF
+  status: text('status').default('online'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -76,5 +77,14 @@ export const councilHistory = pgTable('council_history', {
   secretaryName: text('secretary_name').notNull(), // 4. ชื่อเลขา
   presidentImage: text('president_image'),         // 5. รูปนายก
   secretaryImage: text('secretary_image'),         // 6. รูปเลขา
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const agencies = pgTable('agencies', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),              // ชื่อหน่วยงาน
+  url: text('url').notNull(),                // ลิงก์เว็บไซต์
+  status: text('status').default('offline'), // 'online' | 'offline'
+  order: integer('order').default(0),        // ลำดับการแสดงผล
   createdAt: timestamp('created_at').defaultNow(),
 });
