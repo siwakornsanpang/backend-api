@@ -93,7 +93,7 @@ app.get('/news', async (req, reply) => {
       }
     }
     if (order !== undefined) updateData.order = order;
-    updateData.updateAt = new Date();
+    updateData.updatedAt = new Date();
 
     const result = await db.update(news).set(updateData).where(eq(news.id, parseInt(id))).returning();
 
