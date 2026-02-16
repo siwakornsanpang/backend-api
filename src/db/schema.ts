@@ -43,6 +43,7 @@ export const councilMembers = pgTable('council_members', {
   type: text('type').notNull(), 
   imageUrl: text('image_url'),
   order: integer('order').notNull(), 
+  background: text('background'),
 } 
 // 🔥 ลบส่วน (t) => ({ unq: ... }) ตรงนี้ทิ้งไปเลยครับ ให้จบที่ปีกกาปิด } พอ
 );
