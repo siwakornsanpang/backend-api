@@ -23,7 +23,12 @@ app.register(cors, {
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 });// อนุญาตให้เชื่อมต่อข้ามโดเมน
-app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // รับไฟล์ได้ 10MB
+
+// ✅ แก้ไขตรงนี้: เพิ่ม attachFieldsToBody: true
+app.register(multipart, { 
+    attachFieldsToBody: true, // สำคัญมาก! แปลงไฟล์และ field ให้เป็น object ใน req.body
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
 
 // --- 2. Register Routes (เรียกใช้ไฟล์แยก) ---
 app.register(homeRoutes);       // ✅ โหลด API หน้าแรก
