@@ -9,20 +9,27 @@ import { pgTable, serial, text, varchar, timestamp , integer, date, unique, bool
 
 // ตารางสำหรับเก็บข้อมูลหน้าแรก (ข้อความ + ลิงก์รูปที่อัปโหลดแล้ว)
 
+type BannerItem = {
+  id: string;
+  url: string;
+  active: boolean;
+  order: number;
+};
+
 export const homeContent = pgTable('home_content', {
   id: serial('id').primaryKey(),
-  
-  // --- ส่วน Banner Slide (เก็บเป็น JSON Array ของ URL รูปภาพ) ---
-  banners: json('banners').$type<string[]>().default([]), 
 
-  // --- ส่วนข้อความ 3 บรรทัด ---
-  headerText: text('header_text'),       // บรรทัด 1: สภาเภสัชกรรม (ใหญ่สุด)
-  subHeaderText: text('sub_header_text'), // บรรทัด 2: The Pharmacy Council...
-  bodyText: text('body_text'),           // บรรทัด 3: สภาเคียงข้าง...
+  // 2. ⚠️ แก้บรรทัดนี้ครับ (สำคัญที่สุด)
+  // จากเดิม: banners: text('banners').array() ... หรือ json(...).$type<string[]>()
+  // ให้แก้เป็น: 👇
+  banners: json('banners').$type<BannerItem[]>().default([]), 
 
-  // --- ส่วน Popup ---
-  popupImageUrl: text('popup_image_url'), // รูป Popup
-  showPopup: boolean('show_popup').default(true), // สถานะ เปิด/ปิด
+  headerText: text('header_text'),
+  subHeaderText: text('sub_header_text'),
+  bodyText: text('body_text'),
+
+  popupImageUrl: text('popup_image_url'),
+  showPopup: boolean('show_popup').default(true),
 
   updatedAt: timestamp('updated_at').defaultNow()
 });

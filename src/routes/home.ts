@@ -17,35 +17,31 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 
 export async function homeRoutes(app: FastifyInstance) {
   
-  // GET: ดึงข้อมูล
+  // GET: (เหมือนเดิม)
   app.get('/home-content', async () => {
     const content = await db.select().from(homeContent).limit(1);
     if (content.length === 0) {
-      return { 
-        banners: [], // ส่งกลับเป็น Array ว่าง
-        headerText: "", subHeaderText: "", bodyText: "",
-        popupImageUrl: "", showPopup: false 
-      };
+      return { banners: [], headerText: "", subHeaderText: "", bodyText: "", popupImageUrl: "", showPopup: false };
     }
     return content[0];
   });
 
-  // POST: บันทึกข้อมูล
+  // POST: แก้ไขใหม่ รองรับการเรียงลำดับผสมกัน
   app.post('/home-content', async (req, reply) => {
     const parts = req.parts();
     
-    // ตัวแปรเก็บค่า
     let headerText = '';
     let subHeaderText = '';
     let bodyText = '';
     let showPopup = false;
     
-    // เก็บ Banner เป็น Object แบบใหม่
-    let currentBanners: any[] = []; 
-    let newBannerUrls: string[] = [];
+    let bannerData: any[] = []; // JSON ที่บอกลำดับและสถานะ
+    let uploadedBannerUrls: string[] = []; // เก็บ URL ของรูปที่เพิ่งอัปโหลด
+    
     let popupUrl = '';
     let hasNewPopup = false;
 
+    // 1. วนลูปรับไฟล์และข้อมูล
     for await (const part of parts) {
       if (part.type === 'file') {
         const ext = path.extname(part.filename);
@@ -62,8 +58,9 @@ export async function homeRoutes(app: FastifyInstance) {
         if (part.fieldname === 'popupImage') {
           popupUrl = data.publicUrl;
           hasNewPopup = true;
-        } else if (part.fieldname === 'bannerImages') {
-          newBannerUrls.push(data.publicUrl);
+        } else if (part.fieldname === 'bannerFiles') {
+          // เก็บ URL รูปใหม่เข้า Array รอไว้ก่อน
+          uploadedBannerUrls.push(data.publicUrl);
         }
 
       } else {
@@ -73,29 +70,36 @@ export async function homeRoutes(app: FastifyInstance) {
         if (part.fieldname === 'bodyText') bodyText = part.value as string;
         if (part.fieldname === 'showPopup') showPopup = part.value === 'true';
         
-        if (part.fieldname === 'currentBanners') {
-            // รับ JSON ของ Banner ปัจจุบันที่ Client ส่งมา (รวมการเรียงลำดับ/สถานะ active)
+        if (part.fieldname === 'bannerData') {
             try {
-                currentBanners = JSON.parse(part.value as string);
-            } catch (e) { currentBanners = [] }
+                bannerData = JSON.parse(part.value as string);
+            } catch (e) { bannerData = [] }
         }
       }
     }
 
-    // 1. เอา Banner เก่าที่ User จัดการแล้วมาตั้งต้น
-    let finalBanners = [...currentBanners];
+    // 2. ประกอบร่าง Banner (Merge รูปเก่า + รูปใหม่ตามลำดับ)
+    // bannerData จะส่งมาเป็น list ที่เรียงแล้ว โดยตัวที่เป็นรูปใหม่จะมี flag "isNewFile": true
+    let newFileIndex = 0;
+    
+    const finalBanners = bannerData.map((item, index) => {
+        let url = item.url;
+        
+        // ถ้าเป็นรายการที่ระบุว่าเป็นไฟล์ใหม่ ให้ไปหยิบ URL จากที่เพิ่งอัปโหลดมาใส่
+        if (item.isNewFile) {
+            url = uploadedBannerUrls[newFileIndex] || url; // กันเหนียว
+            newFileIndex++;
+        }
 
-    // 2. เอารูปใหม่ที่เพิ่งอัปโหลด มาต่อท้าย (สร้างเป็น Object)
-    const newBannerObjects = newBannerUrls.map((url, index) => ({
-        id: randomUUID(),
-        url: url,
-        active: true, // รูปใหม่ให้เปิดใช้งานเลย
-        order: finalBanners.length + index + 1
-    }));
+        return {
+            id: item.id || randomUUID(),
+            url: url,
+            active: item.active,
+            order: index + 1 // รันเลขลำดับใหม่ตามที่ส่งมา
+        };
+    });
 
-    finalBanners = [...finalBanners, ...newBannerObjects];
-
-    // Logic Update Database
+    // 3. Update Database
     const existing = await db.select().from(homeContent).limit(1);
     
     const updateData = {
@@ -105,17 +109,12 @@ export async function homeRoutes(app: FastifyInstance) {
         updatedAt: new Date()
     };
 
-    if (hasNewPopup) {
-        (updateData as any).popupImageUrl = popupUrl;
-    }
+    if (hasNewPopup) { (updateData as any).popupImageUrl = popupUrl; }
 
     if (existing.length > 0) {
       await db.update(homeContent).set(updateData).where(eq(homeContent.id, existing[0].id));
     } else {
-      await db.insert(homeContent).values({
-        ...updateData,
-        popupImageUrl: popupUrl
-      } as any);
+      await db.insert(homeContent).values({ ...updateData, popupImageUrl: popupUrl } as any);
     }
 
     return { success: true };
