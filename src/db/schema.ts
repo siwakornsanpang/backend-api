@@ -27,7 +27,6 @@ export const homeContent = pgTable('home_content', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
-
 export const laws = pgTable('laws', {
   id: serial('id').primaryKey(),
   category: text('category').notNull(), // เก็บหมวดหมู่ (เช่น law1, law2)
