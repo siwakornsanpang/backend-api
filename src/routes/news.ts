@@ -98,5 +98,10 @@ export async function newsRoutes(app: FastifyInstance) {
       return { success: true, message: 'Updated' }; // ตัวอย่าง
   });
 
-  // DELETE ... (เหมือนเดิม)
+  // DELETE: ลบข่าว
+  app.delete('/news/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await db.delete(news).where(eq(news.id, parseInt(id)));
+    return { success: true, message: 'ลบข่าวเรียบร้อย' };
+  });
 }
