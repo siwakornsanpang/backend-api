@@ -20,6 +20,25 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function newsRoutes(app: FastifyInstance) {
 
   // GET ... (เหมือนเดิม)
+  app.get('/news', async (req, reply) => { 
+     // ... code เดิม ...
+     const { category, status } = req.query as { category?: string; status?: string };
+     const conditions = [];
+     if (category) conditions.push(eq(news.category, category as any));
+     if (status) conditions.push(eq(news.status, status as any));
+     const result = await db.select().from(news)
+       .where(conditions.length > 0 ? and(...conditions) : undefined)
+       .orderBy(desc(news.createdAt));
+     return result;
+  });
+
+  app.get('/news/:id', async (req, reply) => { 
+     // ... code เดิม ...
+     const { id } = req.params as { id: string };
+     const result = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
+     if (result.length === 0) return reply.status(404).send({ message: 'ไม่พบข่าว' });
+     return result[0];
+  });
 
   // -------------------------------------------------------
   // ✅ 2. API Upload Image (แก้ไขใหม่ รับมือ Stream)
