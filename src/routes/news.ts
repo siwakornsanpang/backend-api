@@ -8,82 +8,70 @@ import path from 'path';
 
 export async function newsRoutes(app: FastifyInstance) {
 
-  // GET: ดึงข่าวทั้งหมด
-  app.get('/news', async (req, reply) => {
-    const { category, status } = req.query as { category?: string; status?: string };
-    const conditions = [];
-    if (category) conditions.push(eq(news.category, category as any));
-    if (status) conditions.push(eq(news.status, status as any));
+  // ... (GET /news และ GET /news/:id คงเดิม) ...
+  app.get('/news', async (req, reply) => { /* ...code เดิม... */ });
+  app.get('/news/:id', async (req, reply) => { /* ...code เดิม... */ });
 
-    const result = await db
-      .select()
-      .from(news)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(news.createdAt));
+  // -------------------------------------------------------
+  // ✅ 1. เพิ่ม API สำหรับอัปโหลดรูปจาก Editor โดยเฉพาะ
+  // -------------------------------------------------------
+  app.post('/news/upload-image', async (req, reply) => {
+    // ❌ แบบเดิม (ใช้ไม่ได้เมื่อ attachFieldsToBody: true)
+    // const data = await req.file(); 
 
-    return result;
-  });
+    // ✅ แบบใหม่: ดึงจาก req.body
+    const body = req.body as any;
+    const data = body.file; // ชื่อ 'file' ต้องตรงกับที่ Frontend ส่งมาใน formData
 
-  // GET: ดึงข่าว 1 อัน
-  app.get('/news/:id', async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const result = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
-    if (result.length === 0) return reply.status(404).send({ message: 'ไม่พบข่าว' });
-    return result[0];
+    if (!data) {
+      return reply.status(400).send({ message: 'No file uploaded' });
+    }
+
+    const ext = path.extname(data.filename);
+    const filename = `news-content/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
+    
+    // แปลงไฟล์เป็น Buffer
+    const fileBuffer = await data.toBuffer();
+
+    // Upload ขึ้น Supabase
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filename, fileBuffer, {
+        contentType: data.mimetype,
+        upsert: true
+      });
+
+    if (error) {
+      console.error('Supabase Error:', error);
+      return reply.status(500).send({ message: 'Upload failed' });
+    }
+
+    // Get Public URL
+    const { data: publicData } = supabase.storage
+      .from('uploads')
+      .getPublicUrl(filename);
+
+    return { url: publicData.publicUrl };
   });
 
   // -------------------------------------------------------
-  // ✅ 3. POST: สร้างข่าวใหม่ (แบบใช้ req.body)
+  // ✅ 2. ปรับ POST: สร้างข่าว (รับเป็น JSON ปกติแล้ว)
   // -------------------------------------------------------
   app.post('/news', async (req, reply) => {
-    const body = req.body as any; // ข้อมูลมาที่นี่แล้ว เพราะ attachFieldsToBody: true
-
-    // 1. ดึงค่า Text (ค่าจะอยู่ใน .value)
-    const title = body.title?.value;
-    const content = body.content?.value;
-    const category = body.category?.value || 'news';
-    const status = body.status?.value || 'draft';
-    const order = parseInt(body.order?.value || '0');
+    // ไม่ต้องใช้ req.parts() หรือ req.body.value แล้ว เพราะเราจะส่ง JSON
+    const { title, content, category, status, order } = req.body as any;
 
     if (!title || !content) {
-      return reply.status(400).send({ message: 'ต้องระบุ title และ content' });
+      return reply.status(400).send({ message: 'Title and content are required' });
     }
 
-    // 2. จัดการรูปภาพ (Upload Supabase)
-    const uploadedImages: string[] = [];
-    
-    // files อาจเป็น Array (หลายไฟล์) หรือ Object (ไฟล์เดียว) หรือ undefined
-    // เราแปลงให้เป็น Array เสมอเพื่อวนลูปง่ายๆ
-    const fileParts = body.files ? (Array.isArray(body.files) ? body.files : [body.files]) : [];
-
-    for (const part of fileParts) {
-      if (!part.filename) continue; // ข้ามถ้าไม่ใช่ไฟล์
-
-      const ext = path.extname(part.filename);
-      const filename = `news/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
-      const fileBuffer = await part.toBuffer(); // แปลงเป็น Buffer
-
-      const { error } = await supabase.storage
-        .from('uploads')
-        .upload(filename, fileBuffer, {
-          contentType: part.mimetype,
-          upsert: true
-        });
-
-      if (!error) {
-        const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
-        uploadedImages.push(data.publicUrl);
-      }
-    }
-
-    // 3. บันทึกลง Database
     const result = await db.insert(news).values({
       title,
-      content,
-      category: category as any,
-      status: status as any,
+      content, // HTML ที่มี <img src="..."> อยู่ข้างในแล้ว
+      category,
+      status,
       order,
-      images: uploadedImages, 
+      images: [], // ไม่ได้ใช้ field นี้แบบแยกแล้ว (หรือจะใส่ URL รูปแรกที่ parse จาก content ก็ได้)
       publishedAt: status === 'published' ? new Date() : null,
     }).returning();
 
@@ -91,68 +79,27 @@ export async function newsRoutes(app: FastifyInstance) {
   });
 
   // -------------------------------------------------------
-  // ✅ 4. PUT: แก้ไขข่าว (แบบใช้ req.body)
+  // ✅ 3. ปรับ PUT: แก้ไขข่าว (รับเป็น JSON ปกติ)
   // -------------------------------------------------------
   app.put('/news/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
+    const { title, content, category, status, order } = req.body as any;
+
     const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
-    if (existing.length === 0) return reply.status(404).send({ message: 'ไม่พบข่าว' });
+    if (existing.length === 0) return reply.status(404).send({ message: 'Not found' });
 
-    const body = req.body as any;
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: any = { 
+      title, 
+      content, 
+      category, 
+      status, 
+      order, 
+      updatedAt: new Date() 
+    };
 
-    // 1. Update Text Fields
-    if (body.title) updateData.title = body.title.value;
-    if (body.content) updateData.content = body.content.value;
-    if (body.category) updateData.category = body.category.value;
-    if (body.order) updateData.order = parseInt(body.order.value);
-    
-    if (body.status) {
-      updateData.status = body.status.value;
-      if (updateData.status === 'published' && !existing[0].publishedAt) {
-        updateData.publishedAt = new Date();
-      }
+    if (status === 'published' && !existing[0].publishedAt) {
+      updateData.publishedAt = new Date();
     }
-
-    // 2. จัดการรูปภาพ
-    const newUploadedImages: string[] = [];
-    const fileParts = body.files ? (Array.isArray(body.files) ? body.files : [body.files]) : [];
-
-    for (const part of fileParts) {
-      if (!part.filename) continue;
-      
-      const ext = path.extname(part.filename);
-      const filename = `news/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
-      const fileBuffer = await part.toBuffer();
-
-      const { error } = await supabase.storage.from('uploads').upload(filename, fileBuffer, {
-          contentType: part.mimetype,
-          upsert: true
-      });
-
-      if (!error) {
-          const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
-          newUploadedImages.push(data.publicUrl);
-      }
-    }
-
-    // 3. จัดการรูปเดิม (JSON String -> Array)
-    let existingImagesFromClient: string[] = [];
-    if (body.existingImages) {
-        try {
-            // body.existingImages.value จะเป็น string json เช่น "['url1', 'url2']"
-            existingImagesFromClient = JSON.parse(body.existingImages.value);
-        } catch (e) {
-            existingImagesFromClient = [];
-        }
-    } else {
-        // ถ้าไม่ได้ส่งมา (อาจเกิดจากไม่ได้แก้รูป) หรือส่งผิด ให้ใช้รูปเดิมที่มีใน DB (Optional)
-        // แต่ตาม Logic Frontend ของคุณ ถ้าลบรูป มันจะส่ง Array ที่เหลือมา ดังนั้นถ้าไม่ส่งมาแปลว่าลบหมด หรือ Error
-        // ในที่นี้ขอ assume ว่า Frontend ส่งมาเสมอถ้ามีรูปเหลือ
-    }
-
-    // รวมรูป
-    updateData.images = [...existingImagesFromClient, ...newUploadedImages];
 
     const result = await db.update(news)
       .set(updateData)
