@@ -106,14 +106,44 @@ export async function newsRoutes(app: FastifyInstance) {
     return { success: true, data: result[0] };
   });
 
-  // PUT ... (แก้เหมือน POST คือใช้ req.body ได้เลย)
+  // -------------------------------------------------------
+  // ✅ 4. PUT: แก้ไขข่าว (รับ JSON)
+  // -------------------------------------------------------
   app.put('/news/:id', async (req, reply) => {
-      // ... code เดิมที่ใช้ req.body ...
+    try {
       const { id } = req.params as { id: string };
-      const body = req.body as any;
-      // ... logic เดิม ...
-      // แค่เช็คว่า return ถูกต้อง
-      return { success: true, message: 'Updated' }; // ตัวอย่าง
+      // รับ JSON Body
+      const { title, content, category, status, order } = req.body as any;
+
+      // เช็คว่ามีข่าวนี้จริงไหม
+      const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
+      if (existing.length === 0) return reply.status(404).send({ message: 'Not found' });
+
+      const updateData: any = { 
+        title, 
+        content, 
+        category, 
+        status, 
+        order: parseInt(order || '0'), 
+        updatedAt: new Date() 
+      };
+
+      // อัปเดตเวลา publish ถ้าเพิ่งเปลี่ยนสถานะเป็น published
+      if (status === 'published' && !existing[0].publishedAt) {
+        updateData.publishedAt = new Date();
+      }
+
+      // สั่ง Update
+      const result = await db.update(news)
+        .set(updateData)
+        .where(eq(news.id, parseInt(id)))
+        .returning();
+
+      return { success: true, data: result[0] };
+    } catch (err) {
+      console.error(err);
+      return reply.status(500).send({ message: 'Failed to update news' });
+    }
   });
 
   // DELETE: ลบข่าว
