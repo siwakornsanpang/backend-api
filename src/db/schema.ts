@@ -1,19 +1,31 @@
 // src/db/schema.ts
-import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean, json } from 'drizzle-orm/pg-core';
-import { stat } from 'node:fs';
+
+import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean, json  } from 'drizzle-orm/pg-core';
+
 
 
 
 // src/db/schema.ts (ต่อท้ายไฟล์เดิม)
 
 // ตารางสำหรับเก็บข้อมูลหน้าแรก (ข้อความ + ลิงก์รูปที่อัปโหลดแล้ว)
+
 export const homeContent = pgTable('home_content', {
   id: serial('id').primaryKey(),
-  welcomeMessage: text('welcome_message'),
-  bannerUrl: text('banner_url'), // เก็บ path ของไฟล์รูปที่เราอัปโหลด
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+  
+  // --- ส่วน Banner Slide (เก็บเป็น JSON Array ของ URL รูปภาพ) ---
+  banners: json('banners').$type<string[]>().default([]), 
 
+  // --- ส่วนข้อความ 3 บรรทัด ---
+  headerText: text('header_text'),       // บรรทัด 1: สภาเภสัชกรรม (ใหญ่สุด)
+  subHeaderText: text('sub_header_text'), // บรรทัด 2: The Pharmacy Council...
+  bodyText: text('body_text'),           // บรรทัด 3: สภาเคียงข้าง...
+
+  // --- ส่วน Popup ---
+  popupImageUrl: text('popup_image_url'), // รูป Popup
+  showPopup: boolean('show_popup').default(true), // สถานะ เปิด/ปิด
+
+  updatedAt: timestamp('updated_at').defaultNow()
+});
 
 export const laws = pgTable('laws', {
   id: serial('id').primaryKey(),

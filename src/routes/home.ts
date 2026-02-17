@@ -3,10 +3,10 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { homeContent } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { supabase } from '../utils/supabase'; // 👈 เรียกใช้ตัวที่เราสร้างตะกี้
+import { supabase } from '../utils/supabase';
 import path from 'path';
+import { randomUUID } from 'crypto';
 
-// Helper: แปลงไฟล์เป็น Buffer (เอาไว้ใช้เฉพาะในไฟล์นี้)
 async function streamToBuffer(stream: any): Promise<Buffer> {
   const chunks = [];
   for await (const chunk of stream) {
@@ -17,82 +17,107 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 
 export async function homeRoutes(app: FastifyInstance) {
   
-  // GET: ดึงข้อมูลหน้าแรก
+  // GET: ดึงข้อมูล
   app.get('/home-content', async () => {
     const content = await db.select().from(homeContent).limit(1);
-    if (content.length === 0) return { welcomeMessage: "", bannerUrl: "" };
+    if (content.length === 0) {
+      return { 
+        banners: [], // ส่งกลับเป็น Array ว่าง
+        headerText: "", subHeaderText: "", bodyText: "",
+        popupImageUrl: "", showPopup: false 
+      };
+    }
     return content[0];
   });
 
-  // POST: อัปโหลดและบันทึก
+  // POST: บันทึกข้อมูล
   app.post('/home-content', async (req, reply) => {
     const parts = req.parts();
     
-    let welcomeMessage = '';
-    let bannerUrl = '';
-    let hasNewImage = false;
+    // ตัวแปรเก็บค่า
+    let headerText = '';
+    let subHeaderText = '';
+    let bodyText = '';
+    let showPopup = false;
+    
+    // เก็บ Banner เป็น Object แบบใหม่
+    let currentBanners: any[] = []; 
+    let newBannerUrls: string[] = [];
+    let popupUrl = '';
+    let hasNewPopup = false;
 
-    // 1. รับไฟล์ & อัปขึ้น Supabase
     for await (const part of parts) {
       if (part.type === 'file') {
-        hasNewImage = true;
         const ext = path.extname(part.filename);
-        const filename = `banners/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
-        
+        const filename = `home/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
         const fileBuffer = await streamToBuffer(part.file);
+
+        // Upload
+        const { error } = await supabase.storage.from('uploads').upload(filename, fileBuffer, {
+           contentType: part.mimetype, upsert: true 
+        });
+
+        const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
         
-        const { error } = await supabase.storage
-          .from('uploads')
-          .upload(filename, fileBuffer, {
-            contentType: part.mimetype,
-            upsert: true
-          });
+        if (part.fieldname === 'popupImage') {
+          popupUrl = data.publicUrl;
+          hasNewPopup = true;
+        } else if (part.fieldname === 'bannerImages') {
+          newBannerUrls.push(data.publicUrl);
+        }
 
-        if (error) throw new Error('Upload failed: ' + error.message);
-
-        const { data: publicData } = supabase.storage
-          .from('uploads')
-          .getPublicUrl(filename);
-          
-        bannerUrl = publicData.publicUrl;
       } else {
-        if (part.fieldname === 'welcomeMessage') {
-          welcomeMessage = part.value as string;
+        // Handle Fields
+        if (part.fieldname === 'headerText') headerText = part.value as string;
+        if (part.fieldname === 'subHeaderText') subHeaderText = part.value as string;
+        if (part.fieldname === 'bodyText') bodyText = part.value as string;
+        if (part.fieldname === 'showPopup') showPopup = part.value === 'true';
+        
+        if (part.fieldname === 'currentBanners') {
+            // รับ JSON ของ Banner ปัจจุบันที่ Client ส่งมา (รวมการเรียงลำดับ/สถานะ active)
+            try {
+                currentBanners = JSON.parse(part.value as string);
+            } catch (e) { currentBanners = [] }
         }
       }
     }
 
-    // 2. ลบรูปเก่า & บันทึก DB
+    // 1. เอา Banner เก่าที่ User จัดการแล้วมาตั้งต้น
+    let finalBanners = [...currentBanners];
+
+    // 2. เอารูปใหม่ที่เพิ่งอัปโหลด มาต่อท้าย (สร้างเป็น Object)
+    const newBannerObjects = newBannerUrls.map((url, index) => ({
+        id: randomUUID(),
+        url: url,
+        active: true, // รูปใหม่ให้เปิดใช้งานเลย
+        order: finalBanners.length + index + 1
+    }));
+
+    finalBanners = [...finalBanners, ...newBannerObjects];
+
+    // Logic Update Database
     const existing = await db.select().from(homeContent).limit(1);
     
-    if (existing.length > 0) {
-      // Logic ลบรูปเก่า
-      if (hasNewImage && existing[0].bannerUrl) {
-        try {
-          const oldUrl = existing[0].bannerUrl;
-          const pathToRemove = oldUrl.split('/uploads/').pop(); 
-          if (pathToRemove) {
-            await supabase.storage.from('uploads').remove([pathToRemove]);
-            console.log('✅ ลบรูปเก่าแล้ว:', pathToRemove);
-          }
-        } catch (err) {
-          console.error("ลบรูปเก่าพลาด:", err);
-        }
-      }
-
-      await db.update(homeContent).set({
-        welcomeMessage: welcomeMessage || existing[0].welcomeMessage,
-        ...(hasNewImage ? { bannerUrl } : {}),
+    const updateData = {
+        banners: finalBanners,
+        headerText, subHeaderText, bodyText,
+        showPopup,
         updatedAt: new Date()
-      }).where(eq(homeContent.id, existing[0].id));
-      
-    } else {
-      await db.insert(homeContent).values({
-        welcomeMessage: welcomeMessage,
-        bannerUrl: bannerUrl
-      });
+    };
+
+    if (hasNewPopup) {
+        (updateData as any).popupImageUrl = popupUrl;
     }
 
-    return { success: true, message: 'บันทึกสำเร็จ (Modular Version)', url: bannerUrl };
+    if (existing.length > 0) {
+      await db.update(homeContent).set(updateData).where(eq(homeContent.id, existing[0].id));
+    } else {
+      await db.insert(homeContent).values({
+        ...updateData,
+        popupImageUrl: popupUrl
+      } as any);
+    }
+
+    return { success: true };
   });
 }
