@@ -5,7 +5,6 @@ import { news } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
-import { pipeline } from 'stream/promises'; // ใช้ตัวช่วยจัดการ stream
 
 // ✅ 1. เพิ่ม Helper Function นี้ไว้บนสุด (นอก export function)
 // ฟังก์ชันนี้จะช่วยแปลง Stream เป็น Buffer โดยไม่ทำให้ล่มง่ายๆ
@@ -100,7 +99,7 @@ export async function newsRoutes(app: FastifyInstance) {
       category: category || 'news',
       status: status || 'draft',
       order: parseInt(order || '0'),
-      images: [],
+      // images: [],
       publishedAt: status === 'published' ? new Date() : null,
     }).returning();
 
