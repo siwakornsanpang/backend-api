@@ -19,18 +19,14 @@ type BannerItem = {
 export const homeContent = pgTable('home_content', {
   id: serial('id').primaryKey(),
 
-  // 2. ⚠️ แก้บรรทัดนี้ครับ (สำคัญที่สุด)
-  // จากเดิม: banners: text('banners').array() ... หรือ json(...).$type<string[]>()
-  // ให้แก้เป็น: 👇
+  // 2. ⚠️ แก้บรรทัดนี้ครับ (สำคัญมาก! ต้องเป็น BannerItem[] เท่านั้น)
   banners: json('banners').$type<BannerItem[]>().default([]), 
-
+  
   headerText: text('header_text'),
   subHeaderText: text('sub_header_text'),
   bodyText: text('body_text'),
-
   popupImageUrl: text('popup_image_url'),
   showPopup: boolean('show_popup').default(true),
-
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
