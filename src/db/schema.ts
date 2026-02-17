@@ -1,5 +1,5 @@
 // src/db/schema.ts
-import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean, json } from 'drizzle-orm/pg-core';
 import { stat } from 'node:fs';
 
 
@@ -63,6 +63,7 @@ export const news = pgTable('news', {
   content: text('content').notNull(),           // เนื้อหาข่าว
   status: text('status').default('draft'), // สถานะ (draft, published)
   category: text('category').notNull(), // หมวดหมู่ข่าว (news, activity, announcement)
+  images: json('images').$type<string[]>().default([]),
   createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
   updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
   publishedAt: timestamp('published_at').defaultNow(), // วันที่เผยแพร่
