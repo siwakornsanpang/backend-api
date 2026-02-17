@@ -1,10 +1,7 @@
 // src/db/schema.ts
-<<<<<<< HEAD
+
 import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean, json  } from 'drizzle-orm/pg-core';
-=======
-import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean, json } from 'drizzle-orm/pg-core';
->>>>>>> 818608856171b238918aa5495d5e19bb87eedc18
-import { stat } from 'node:fs';
+
 
 
 
