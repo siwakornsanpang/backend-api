@@ -2,7 +2,7 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { news } from '../db/schema';
-import { eq, desc } from 'drizzle-orm'; // เอา and ออกถ้าไม่ได้ใช้
+import { eq, desc, and } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
 import { pipeline } from 'stream/promises'; // ใช้ตัวช่วยจัดการ stream
