@@ -2,37 +2,41 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { pharmacists } from '../db/schema';
-import { ilike, or, eq } from 'drizzle-orm';
+import { ilike, or, eq ,asc} from 'drizzle-orm';
+
 
 export async function pharmacistRoutes(app: FastifyInstance) {
 
   // GET /api/pharmacists
   // หรือ /api/pharmacists?q=ภักดี (ค้นหา)
-  app.get('/pharmacists', async (req, reply) => {
-    const { q } = req.query as { q?: string }; // รับค่า query string ชื่อ q
+app.get('/pharmacists', async (req, reply) => {
+  const { q } = req.query as { q?: string };
 
-    // ถ้าไม่มีการค้นหา ให้ส่งกลับไปทั้งหมด (หรือจำกัดแค่ 20 คน)
-    if (!q) {
-      const result = await db.select().from(pharmacists).limit(50);
-      return result;
-    }
-
-    // ถ้ามีการค้นหา (Search Logic)
-    // ค้นหาจาก ชื่อ หรือ เลขใบอนุญาต หรือ จังหวัด
-    const searchStr = `%${q}%`; // ใส่ % หน้าหลังเพื่อหาบางส่วนของคำ
-    
+  // กรณี 1: ไม่มีการค้นหา (ตัวปัญหาคือตรงนี้)
+  if (!q) {
     const result = await db.select()
       .from(pharmacists)
-      .where(
-        or(
-          ilike(pharmacists.name, searchStr),          // ชื่อเหมือน...
-          ilike(pharmacists.registrationId, searchStr), // เลข ภ. เหมือน...
-          ilike(pharmacists.province, searchStr)        // จังหวัดเหมือน...
-        )
-      );
-
+      .orderBy(asc(pharmacists.id)) // <--- เพิ่มบรรทัดนี้! (เรียงตาม ID)
+      .limit(50);
     return result;
-  });
+  }
+
+  // กรณี 2: มีการค้นหา (ควรเพิ่มด้วยเหมือนกัน)
+  const searchStr = `%${q}%`;
+  const result = await db.select()
+    .from(pharmacists)
+    .where(
+      or(
+        ilike(pharmacists.name, searchStr),
+        ilike(pharmacists.registrationId, searchStr),
+        ilike(pharmacists.province, searchStr),
+        ilike(pharmacists.address, searchStr)
+      )
+    )
+    .orderBy(asc(pharmacists.id)); // <--- เพิ่มตรงนี้ด้วยก็ดีครับ
+
+  return result;
+});
 
   // GET /api/pharmacists/:id (เผื่อกดดูรายละเอียด)
   app.get('/pharmacists/:id', async (req, reply) => {

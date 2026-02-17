@@ -45,7 +45,7 @@ export async function councilRoutes(app: FastifyInstance) {
   // 2. POST: สร้างข้อมูลใหม่
   app.post('/council', async (req, reply) => {
     const parts = req.parts();
-    let name = '', position = '', type = 'elected', order = 99, imageUrl = '';
+    let name = '', position = '', type = 'elected', order = 99, imageUrl = '', background = '';
 
     console.log("--- Starting POST Upload ---");
 
@@ -87,6 +87,7 @@ export async function councilRoutes(app: FastifyInstance) {
         if (part.fieldname === 'position') position = part.value as string;
         if (part.fieldname === 'type') type = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
+        if (part.fieldname === 'background') background = part.value as string;
       }
     }
 
@@ -100,7 +101,7 @@ export async function councilRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     
-    let name, position, type, order, imageUrl;
+    let name, position, type, order, imageUrl, background;
     
     console.log(`--- Starting PUT Update (ID: ${id}) ---`);
 
@@ -137,6 +138,7 @@ export async function councilRoutes(app: FastifyInstance) {
         if (part.fieldname === 'position') position = part.value as string;
         if (part.fieldname === 'type') type = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
+        if (part.fieldname === 'background') background = part.value as string;
       }
     }
 
@@ -145,7 +147,9 @@ export async function councilRoutes(app: FastifyInstance) {
       position: position || oldData[0].position,
       type: type || oldData[0].type,
       order: order !== undefined ? order : oldData[0].order,
-      imageUrl: imageUrl || oldData[0].imageUrl // ถ้าไม่มีรูปใหม่ ให้ใช้รูปเดิม
+      imageUrl: imageUrl || oldData[0].imageUrl, // ถ้าไม่มีรูปใหม่ ให้ใช้รูปเดิม
+      background: background !== undefined ? background : oldData[0].background
+    
     }).where(eq(councilMembers.id, parseInt(id)));
 
     return { success: true };
