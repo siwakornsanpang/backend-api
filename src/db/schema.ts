@@ -55,6 +55,9 @@ export const pharmacists = pgTable('pharmacists', {
   registrationId: text('registration_id').notNull(), // เลขใบอนุญาต (ภ.77889)
   province: text('province'),             // จังหวัด (กรุงเทพ)
   status: text('status').default('ใช้งาน'), // สถานะ (ใช้งาน, ไม่ใช้งาน, พักใช้ใบอนุญาต)
+  address: text('address'),                // ที่อยู่
+  expiryDate: text('expiry_date'),         // วันหมดอายุ (เก็บเป็น text หรือ date ก็ได้ตามข้อมูลต้นทาง)
+  imageUrl: text('image_url'),
 });
 
 export const news = pgTable('news', {
