@@ -26,7 +26,6 @@ app.register(cors, {
 
 // ✅ แก้ไขตรงนี้: เพิ่ม attachFieldsToBody: true
 app.register(multipart, { 
-    attachFieldsToBody: true, // สำคัญมาก! แปลงไฟล์และ field ให้เป็น object ใน req.body
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
