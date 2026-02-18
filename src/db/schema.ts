@@ -1,6 +1,6 @@
 // src/db/schema.ts
 
-import { pgTable, serial, text, varchar, timestamp , integer, date, unique, boolean, json  } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json } from 'drizzle-orm/pg-core';
 
 
 
@@ -20,8 +20,8 @@ export const homeContent = pgTable('home_content', {
   id: serial('id').primaryKey(),
 
   // 2. ⚠️ แก้บรรทัดนี้ครับ (สำคัญมาก! ต้องเป็น BannerItem[] เท่านั้น)
-  banners: json('banners').$type<BannerItem[]>().default([]), 
-  
+  banners: json('banners').$type<BannerItem[]>().default([]),
+
   headerText: text('header_text'),
   subHeaderText: text('sub_header_text'),
   bodyText: text('body_text'),
@@ -55,12 +55,12 @@ export const councilMembers = pgTable('council_members', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   position: text('position').notNull(),
-  type: text('type').notNull(), 
+  type: text('type').notNull(),
   imageUrl: text('image_url'),
-  order: integer('order').notNull(), 
+  order: integer('order').notNull(),
   background: text('background'),
-} 
-// 🔥 ลบส่วน (t) => ({ unq: ... }) ตรงนี้ทิ้งไปเลยครับ ให้จบที่ปีกกาปิด } พอ
+}
+  // 🔥 ลบส่วน (t) => ({ unq: ... }) ตรงนี้ทิ้งไปเลยครับ ให้จบที่ปีกกาปิด } พอ
 );
 
 
@@ -85,7 +85,7 @@ export const news = pgTable('news', {
   // images: json('images').$type<string[]>().default([]),
   createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
   updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
-  publishedAt: timestamp('published_at').defaultNow(), // วันที่เผยแพร่
+  publishedAt: timestamp('published_at'), // วันที่เผยแพร่
 });
 
 

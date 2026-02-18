@@ -19,24 +19,24 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function newsRoutes(app: FastifyInstance) {
 
   // GET ... (เหมือนเดิม)
-  app.get('/news', async (req, reply) => { 
-     // ... code เดิม ...
-     const { category, status } = req.query as { category?: string; status?: string };
-     const conditions = [];
-     if (category) conditions.push(eq(news.category, category as any));
-     if (status) conditions.push(eq(news.status, status as any));
-     const result = await db.select().from(news)
-       .where(conditions.length > 0 ? and(...conditions) : undefined)
-       .orderBy(desc(news.createdAt));
-     return result;
+  app.get('/news', async (req, reply) => {
+    // ... code เดิม ...
+    const { category, status } = req.query as { category?: string; status?: string };
+    const conditions = [];
+    if (category) conditions.push(eq(news.category, category as any));
+    if (status) conditions.push(eq(news.status, status as any));
+    const result = await db.select().from(news)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(news.createdAt));
+    return result;
   });
 
-  app.get('/news/:id', async (req, reply) => { 
-     // ... code เดิม ...
-     const { id } = req.params as { id: string };
-     const result = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
-     if (result.length === 0) return reply.status(404).send({ message: 'ไม่พบข่าว' });
-     return result[0];
+  app.get('/news/:id', async (req, reply) => {
+    // ... code เดิม ...
+    const { id } = req.params as { id: string };
+    const result = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
+    if (result.length === 0) return reply.status(404).send({ message: 'ไม่พบข่าว' });
+    return result[0];
   });
 
   // -------------------------------------------------------
@@ -44,41 +44,41 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   app.post('/news/upload-image', async (req, reply) => {
     try {
-        // เมื่อเอา attachFieldsToBody ออก เราต้องใช้ req.file()
-        const data = await req.file(); 
+      // เมื่อเอา attachFieldsToBody ออก เราต้องใช้ req.file()
+      const data = await req.file();
 
-        if (!data) {
-          return reply.status(400).send({ message: 'No file uploaded' });
-        }
+      if (!data) {
+        return reply.status(400).send({ message: 'No file uploaded' });
+      }
 
-        const ext = path.extname(data.filename);
-        const filename = `news-content/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
-        
-        // ✅ แปลง Stream เป็น Buffer ด้วยฟังก์ชันที่เราสร้างเอง
-        const fileBuffer = await streamToBuffer(data.file);
+      const ext = path.extname(data.filename);
+      const filename = `news-content/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
 
-        // Upload ขึ้น Supabase
-        const { error } = await supabase.storage
-          .from('uploads')
-          .upload(filename, fileBuffer, {
-            contentType: data.mimetype,
-            upsert: true
-          });
+      // ✅ แปลง Stream เป็น Buffer ด้วยฟังก์ชันที่เราสร้างเอง
+      const fileBuffer = await streamToBuffer(data.file);
 
-        if (error) {
-          console.error('Supabase Error:', error);
-          return reply.status(500).send({ message: 'Upload failed' });
-        }
+      // Upload ขึ้น Supabase
+      const { error } = await supabase.storage
+        .from('uploads')
+        .upload(filename, fileBuffer, {
+          contentType: data.mimetype,
+          upsert: true
+        });
 
-        const { data: publicData } = supabase.storage
-          .from('uploads')
-          .getPublicUrl(filename);
+      if (error) {
+        console.error('Supabase Error:', error);
+        return reply.status(500).send({ message: 'Upload failed' });
+      }
 
-        return { url: publicData.publicUrl };
+      const { data: publicData } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(filename);
+
+      return { url: publicData.publicUrl };
 
     } catch (err) {
-        console.error('Upload Error:', err);
-        return reply.status(500).send({ message: 'Internal Server Error' });
+      console.error('Upload Error:', err);
+      return reply.status(500).send({ message: 'Internal Server Error' });
     }
   });
 
@@ -87,7 +87,7 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   app.post('/news', async (req, reply) => {
     // พอเอา attachFieldsToBody ออก Fastify จะกลับมาอ่าน JSON ใน req.body ได้ปกติโดยไม่ต้องทำอะไรเพิ่ม
-    const { title, content, category, status, order } = req.body as any;
+    const { title, content, category, status, order, publishedAt } = req.body as any;
 
     if (!title || !content) {
       return reply.status(400).send({ message: 'Title and content are required' });
@@ -100,7 +100,7 @@ export async function newsRoutes(app: FastifyInstance) {
       status: status || 'draft',
       order: parseInt(order || '0'),
       // images: [],
-      publishedAt: status === 'published' ? new Date() : null,
+      publishedAt: publishedAt ? new Date(publishedAt) : (status === 'published' ? new Date() : null),
     }).returning();
 
     return { success: true, data: result[0] };
@@ -113,23 +113,24 @@ export async function newsRoutes(app: FastifyInstance) {
     try {
       const { id } = req.params as { id: string };
       // รับ JSON Body
-      const { title, content, category, status, order } = req.body as any;
+      const { title, content, category, status, order, publishedAt } = req.body as any;
 
       // เช็คว่ามีข่าวนี้จริงไหม
       const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
       if (existing.length === 0) return reply.status(404).send({ message: 'Not found' });
 
-      const updateData: any = { 
-        title, 
-        content, 
-        category, 
-        status, 
-        order: parseInt(order || '0'), 
-        updatedAt: new Date() 
+      const updateData: any = {
+        title,
+        content,
+        category,
+        status,
+        order: parseInt(order || '0'),
+        updatedAt: new Date(),
+        publishedAt: publishedAt ? new Date(publishedAt) : existing[0].publishedAt
       };
 
       // อัปเดตเวลา publish ถ้าเพิ่งเปลี่ยนสถานะเป็น published
-      if (status === 'published' && !existing[0].publishedAt) {
+      if (status === 'published' && !updateData.publishedAt) {
         updateData.publishedAt = new Date();
       }
 
