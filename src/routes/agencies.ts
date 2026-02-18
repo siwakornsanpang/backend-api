@@ -3,87 +3,115 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { agencies } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
+import { supabase } from '../utils/supabase';
+import { randomUUID } from 'crypto';
+import path from 'path';
+
+// Helper: แปลง Stream เป็น Buffer สำหรับอัปโหลด
+async function streamToBuffer(stream: any): Promise<Buffer> {
+  const chunks = [];
+  for await (const chunk of stream) { chunks.push(chunk); }
+  return Buffer.concat(chunks);
+}
 
 export async function agencyRoutes(app: FastifyInstance) {
 
-  // 1. GET: ดึงหน่วยงานทั้งหมด (รองรับ filter ?status=online)
+  // 1. GET: ดึงข้อมูล (รองรับการกรองตาม category)
   app.get('/agencies', async (req, reply) => {
-    const { status } = req.query as { status?: string };
-
-    if (status) {
-      return await db.select()
-        .from(agencies)
-        .where(eq(agencies.status, status))
-        .orderBy(asc(agencies.order));
+    const { category } = req.query as { category?: string };
+    
+    let query = db.select().from(agencies);
+    
+    if (category) {
+      // @ts-ignore
+      query = query.where(eq(agencies.category, category));
     }
-
-    return await db.select()
-      .from(agencies)
-      .orderBy(asc(agencies.order));
+    
+    // เรียงตาม order (น้อยไปมาก)
+    return await query.orderBy(asc(agencies.order));
   });
 
-  // 2. POST: เพิ่มหน่วยงานใหม่
+  // 2. POST: เพิ่มข้อมูลใหม่
   app.post('/agencies', async (req, reply) => {
-    const { name, url, status, order } = req.body as {
-      name: string;
-      url: string;
-      status?: string;
-      order?: number;
-    };
+    const parts = req.parts();
+    let data: any = {};
 
-    if (!name || !url) {
-      return reply.status(400).send({ message: 'ต้องระบุ name และ url' });
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        // จัดการอัปโหลดรูป
+        const ext = path.extname(part.filename);
+        const filename = `agencies/${Date.now()}_${randomUUID()}${ext}`;
+        const buffer = await streamToBuffer(part.file);
+        
+        const { error } = await supabase.storage.from('uploads').upload(filename, buffer, { contentType: part.mimetype });
+        if (error) console.error("Upload Error:", error);
+
+        const { data: publicData } = supabase.storage.from('uploads').getPublicUrl(filename);
+        data.imageUrl = publicData.publicUrl;
+      } else {
+        // จัดการข้อมูล Text
+        data[part.fieldname] = part.value;
+      }
     }
 
-    const result = await db.insert(agencies).values({
-      name,
-      url,
-      status: status || 'offline',
-      order: order || 0,
-    }).returning();
+    // แปลงค่า order เป็นตัวเลข
+    if (data.order) data.order = parseInt(data.order);
 
-    return { success: true, data: result[0] };
+    await db.insert(agencies).values({
+      name: data.name,
+      description: data.description,
+      url: data.url,
+      category: data.category,
+      order: data.order || 0,
+      imageUrl: data.imageUrl
+    });
+
+    return { success: true };
   });
 
-  // 3. PUT: แก้ไขหน่วยงาน
+  // 3. PUT: แก้ไขข้อมูล (ส่วนที่คุณติดปัญหา) ✅
   app.put('/agencies/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-    const { name, url, status, order } = req.body as {
-      name?: string;
-      url?: string;
-      status?: string;
-      order?: number;
-    };
+    const parts = req.parts();
+    
+    let updateData: any = {};
 
-    const existing = await db.select().from(agencies).where(eq(agencies.id, parseInt(id))).limit(1);
-    if (existing.length === 0) {
-      return reply.status(404).send({ message: 'ไม่พบหน่วยงาน' });
+    for await (const part of parts) {
+       if (part.type === 'file') {
+          // ถ้ามีการอัปรูปใหม่ -> อัปโหลดและเอา URL ใหม่ไปใส่ updateData
+          const ext = path.extname(part.filename);
+          const filename = `agencies/${Date.now()}_${randomUUID()}${ext}`;
+          const buffer = await streamToBuffer(part.file);
+          
+          await supabase.storage.from('uploads').upload(filename, buffer, { contentType: part.mimetype });
+          const { data: publicData } = supabase.storage.from('uploads').getPublicUrl(filename);
+          
+          // ใส่ URL ใหม่ลงใน field 'imageUrl' (ใน DB ชื่อ image_url จะถูก map อัตโนมัติถ้ายึดตาม schema)
+          // แต่เพื่อให้ชัวร์ ให้เช็คชื่อ field ใน schema.ts ของคุณ
+          // ถ้าใน schema ใช้ camelCase (imageUrl) ให้ใช้ imageUrl
+          // ถ้าใน schema ใช้ snake_case (image_url) และ Drizzle map ให้ ก็ใช้ imageUrl ได้เลย
+          updateData.imageUrl = publicData.publicUrl;
+       } else {
+          // อัปเดตข้อมูล Text เฉพาะที่ส่งมา
+          updateData[part.fieldname] = part.value;
+       }
     }
 
-    const updateData: any = {};
-    if (name) updateData.name = name;
-    if (url) updateData.url = url;
-    if (status) updateData.status = status;
-    if (order !== undefined) updateData.order = order;
+    // แปลง order เป็นตัวเลข (ถ้ามีการส่งมาแก้ไข)
+    if (updateData.order) updateData.order = parseInt(updateData.order);
 
-    const result = await db.update(agencies)
+    // ทำการ Update ลง Database
+    await db.update(agencies)
       .set(updateData)
-      .where(eq(agencies.id, parseInt(id)))
-      .returning();
+      .where(eq(agencies.id, parseInt(id)));
 
-    return { success: true, data: result[0] };
+    return { success: true };
   });
 
-  // 4. DELETE: ลบหน่วยงาน
+  // 4. DELETE: ลบข้อมูล
   app.delete('/agencies/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-
-    const existing = await db.select().from(agencies).where(eq(agencies.id, parseInt(id))).limit(1);
-    if (existing.length === 0) {
-      return reply.status(404).send({ message: 'ไม่พบหน่วยงาน' });
-    }
-
     await db.delete(agencies).where(eq(agencies.id, parseInt(id)));
-    return { success: true, message: 'ลบหน่วยงานเรียบร้อย' };
+    return { success: true };
   });
 }

@@ -102,9 +102,12 @@ export const councilHistory = pgTable('council_history', {
 
 export const agencies = pgTable('agencies', {
   id: serial('id').primaryKey(),
+  category: text('category').notNull(),      // 'secretary', 'royal_college', 'supervised'
   name: text('name').notNull(),              // ชื่อหน่วยงาน
+  description: text('description'),          // 🔥 เพิ่ม: คำอธิบายสั้นๆ
+  imageUrl: text('image_url'),               // 🔥 เพิ่ม: Logo หน่วยงาน
   url: text('url').notNull(),                // ลิงก์เว็บไซต์
-  status: text('status').default('offline'), // 'online' | 'offline'
-  order: integer('order').default(0),        // ลำดับการแสดงผล
+  status: text('status').default('online'),  
+  order: integer('order').default(0),        
   createdAt: timestamp('created_at').defaultNow(),
 });
