@@ -2,11 +2,12 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { agencies } from '../db/schema';
-import { eq, asc, desc } from 'drizzle-orm';
-import { supabase } from '../utils/supabase'; // ใช้ Supabase upload เหมือนเดิม
+import { eq, asc } from 'drizzle-orm';
+import { supabase } from '../utils/supabase';
 import { randomUUID } from 'crypto';
 import path from 'path';
 
+// Helper: แปลง Stream เป็น Buffer สำหรับอัปโหลด
 async function streamToBuffer(stream: any): Promise<Buffer> {
   const chunks = [];
   for await (const chunk of stream) { chunks.push(chunk); }
@@ -15,7 +16,7 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 
 export async function agencyRoutes(app: FastifyInstance) {
 
-  // GET: ดึงข้อมูล (รองรับ ?category=xxx)
+  // 1. GET: ดึงข้อมูล (รองรับการกรองตาม category)
   app.get('/agencies', async (req, reply) => {
     const { category } = req.query as { category?: string };
     
@@ -26,72 +27,88 @@ export async function agencyRoutes(app: FastifyInstance) {
       query = query.where(eq(agencies.category, category));
     }
     
-    // เรียงตาม order น้อยไปมาก
-    const result = await query.orderBy(asc(agencies.order));
-    return result;
+    // เรียงตาม order (น้อยไปมาก)
+    return await query.orderBy(asc(agencies.order));
   });
 
-  // POST: เพิ่มข้อมูล (พร้อมรูป)
+  // 2. POST: เพิ่มข้อมูลใหม่
   app.post('/agencies', async (req, reply) => {
     const parts = req.parts();
-    
-    let name = '';
-    let description = '';
-    let url = '';
-    let category = '';
-    let order = 0;
-    let imageUrl = '';
+    let data: any = {};
 
     for await (const part of parts) {
       if (part.type === 'file') {
+        // จัดการอัปโหลดรูป
         const ext = path.extname(part.filename);
         const filename = `agencies/${Date.now()}_${randomUUID()}${ext}`;
         const buffer = await streamToBuffer(part.file);
         
-        await supabase.storage.from('uploads').upload(filename, buffer, { contentType: part.mimetype });
-        const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
-        imageUrl = data.publicUrl;
+        const { error } = await supabase.storage.from('uploads').upload(filename, buffer, { contentType: part.mimetype });
+        if (error) console.error("Upload Error:", error);
+
+        const { data: publicData } = supabase.storage.from('uploads').getPublicUrl(filename);
+        data.imageUrl = publicData.publicUrl;
       } else {
-        if (part.fieldname === 'name') name = part.value as string;
-        if (part.fieldname === 'description') description = part.value as string;
-        if (part.fieldname === 'url') url = part.value as string;
-        if (part.fieldname === 'category') category = part.value as string;
-        if (part.fieldname === 'order') order = parseInt(part.value as string) || 0;
+        // จัดการข้อมูล Text
+        data[part.fieldname] = part.value;
       }
     }
 
+    // แปลงค่า order เป็นตัวเลข
+    if (data.order) data.order = parseInt(data.order);
+
     await db.insert(agencies).values({
-      name, description, url, category, order, imageUrl
+      name: data.name,
+      description: data.description,
+      url: data.url,
+      category: data.category,
+      order: data.order || 0,
+      imageUrl: data.imageUrl
     });
 
     return { success: true };
   });
 
-  // PUT: แก้ไขข้อมูล
+  // 3. PUT: แก้ไขข้อมูล (ส่วนที่คุณติดปัญหา) ✅
   app.put('/agencies/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     
-    // ... (Logic รับค่าเหมือน POST) ...
-    // เขียน Logic Update โดยเช็คว่าถ้า imageUrl ว่าง ไม่ต้อง update field นั้น
-    // (ขอละไว้สั้นๆ เพื่อความกระชับ ถ้าต้องการตัวเต็มบอกได้ครับ)
-    
-    // *ตัวอย่างแบบย่อ*
     let updateData: any = {};
+
     for await (const part of parts) {
        if (part.type === 'file') {
-          // Upload logic...
-          updateData.imageUrl = '...new url...';
+          // ถ้ามีการอัปรูปใหม่ -> อัปโหลดและเอา URL ใหม่ไปใส่ updateData
+          const ext = path.extname(part.filename);
+          const filename = `agencies/${Date.now()}_${randomUUID()}${ext}`;
+          const buffer = await streamToBuffer(part.file);
+          
+          await supabase.storage.from('uploads').upload(filename, buffer, { contentType: part.mimetype });
+          const { data: publicData } = supabase.storage.from('uploads').getPublicUrl(filename);
+          
+          // ใส่ URL ใหม่ลงใน field 'imageUrl' (ใน DB ชื่อ image_url จะถูก map อัตโนมัติถ้ายึดตาม schema)
+          // แต่เพื่อให้ชัวร์ ให้เช็คชื่อ field ใน schema.ts ของคุณ
+          // ถ้าใน schema ใช้ camelCase (imageUrl) ให้ใช้ imageUrl
+          // ถ้าใน schema ใช้ snake_case (image_url) และ Drizzle map ให้ ก็ใช้ imageUrl ได้เลย
+          updateData.imageUrl = publicData.publicUrl;
        } else {
-          // Field mapping...
+          // อัปเดตข้อมูล Text เฉพาะที่ส่งมา
           updateData[part.fieldname] = part.value;
        }
     }
-    await db.update(agencies).set(updateData).where(eq(agencies.id, parseInt(id)));
+
+    // แปลง order เป็นตัวเลข (ถ้ามีการส่งมาแก้ไข)
+    if (updateData.order) updateData.order = parseInt(updateData.order);
+
+    // ทำการ Update ลง Database
+    await db.update(agencies)
+      .set(updateData)
+      .where(eq(agencies.id, parseInt(id)));
+
     return { success: true };
   });
 
-  // DELETE: ลบ
+  // 4. DELETE: ลบข้อมูล
   app.delete('/agencies/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     await db.delete(agencies).where(eq(agencies.id, parseInt(id)));
