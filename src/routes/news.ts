@@ -16,6 +16,41 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+// -------------------------------------------------------------
+// Helper: ดึง URL รูปภาพทั้งหมดออกจาก HTML String
+// -------------------------------------------------------------
+function extractImageUrls(htmlContent: string): string[] {
+  const urls: string[] = [];
+  // Regex เพื่อจับ <img src="...">
+  const regex = /<img[^>]+src="([^">]+)"/g;
+  let match;
+  while ((match = regex.exec(htmlContent)) !== null) {
+    urls.push(match[1]); // match[1] คือค่าใน src="..."
+  }
+  return urls;
+}
+
+// -------------------------------------------------------------
+// Helper: ดึง Path ของไฟล์ใน Supabase จาก URL
+// ตัวอย่าง URL: https://xyz.supabase.co/storage/v1/object/public/uploads/news-content/abc.jpg
+// Path ที่ต้องการ: news-content/abc.jpg
+// -------------------------------------------------------------
+function getFilePathFromUrl(url: string, bucketName: string = 'uploads'): string | null {
+  try {
+    // ตรวจสอบว่าเป็น URL ของ Supabase หรือไม่ (ปรับตาม URL จริงของคุณ)
+    if (!url.includes(`/${bucketName}/`)) return null;
+
+    const parts = url.split(`/${bucketName}/`);
+    if (parts.length > 1) {
+      return decodeURIComponent(parts[1]); // ต้อง decode เผื่อมี %20
+    }
+    return null;
+  } catch (e) {
+    console.error('Error parsing file path from URL:', e);
+    return null;
+  }
+}
+
 export async function newsRoutes(app: FastifyInstance) {
 
   // GET ... (เหมือนเดิม)
@@ -114,10 +149,36 @@ export async function newsRoutes(app: FastifyInstance) {
       const { id } = req.params as { id: string };
       // รับ JSON Body
       const { title, content, category, status, order, publishedAt } = req.body as any;
-
-      // เช็คว่ามีข่าวนี้จริงไหม
+      // 1. เช็คว่ามีข่าวนี้จริงไหม และดึงเนื้อหาเก่ามา
       const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
       if (existing.length === 0) return reply.status(404).send({ message: 'Not found' });
+      // --------------------------------------------------------
+      // [NEW] Logic ลบรูปออกจาก Supabase ถ้าถูกลบออกจาก Content
+      // --------------------------------------------------------
+      const oldContent = existing[0].content || '';
+      const newContent = content || '';
+      const oldImages = extractImageUrls(oldContent);
+      const newImages = extractImageUrls(newContent);
+      // หา Image ที่มีใน Old แต่ไม่มีใน New (คือถูกลบออก)
+      const deletedImages = oldImages.filter(url => !newImages.includes(url));
+      if (deletedImages.length > 0) {
+        // แปลง URL ให้เป็น Path ที่ Supabase เข้าใจ (news-content/xxx.jpg)
+        const filePathsToDelete = deletedImages
+          .map(url => getFilePathFromUrl(url, 'uploads')) // 'uploads' คือชื่อ Bucket ของคุณ
+          .filter((path): path is string => path !== null); // กรอง path ที่เป็น null ออก
+        if (filePathsToDelete.length > 0) {
+          console.log('Deleting images from Supabase:', filePathsToDelete);
+
+          // สั่งลบทีเดียวหลายไฟล์
+          const { error } = await supabase.storage
+            .from('uploads')
+            .remove(filePathsToDelete);
+          if (error) {
+            console.warn('Failed to delete some images from Supabase:', error);
+            // ไม่ต้อง throw error ปล่อยผ่านได้ เพื่อให้ data ใน DB อัปเดตต่อไป
+          }
+        }
+      }
 
       const updateData: any = {
         title,
@@ -139,7 +200,6 @@ export async function newsRoutes(app: FastifyInstance) {
         .set(updateData)
         .where(eq(news.id, parseInt(id)))
         .returning();
-
       return { success: true, data: result[0] };
     } catch (err) {
       console.error(err);
