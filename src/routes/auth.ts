@@ -146,7 +146,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     // เช็คว่า role ถูกต้อง
-    const validRoles = ['admin', 'editor', 'viewer'];
+    const validRoles = ['admin', 'editor', 'viewer', 'web_editor'];
     const userRole = role || 'viewer';
     if (!validRoles.includes(userRole)) {
       return reply.status(400).send({ message: `Role ไม่ถูกต้อง: ต้องเป็น ${validRoles.join(', ')}` });

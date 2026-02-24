@@ -78,7 +78,7 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // ✅ 2. API Upload Image (แก้ไขใหม่ รับมือ Stream)
   // -------------------------------------------------------
-  app.post('/news/upload-image', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.post('/news/upload-image', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     try {
       // เมื่อเอา attachFieldsToBody ออก เราต้องใช้ req.file()
       const data = await req.file();
@@ -121,7 +121,7 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // ✅ 3. POST: สร้างข่าว (JSON Body ปกติ)
   // -------------------------------------------------------
-  app.post('/news', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.post('/news', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     // พอเอา attachFieldsToBody ออก Fastify จะกลับมาอ่าน JSON ใน req.body ได้ปกติโดยไม่ต้องทำอะไรเพิ่ม
     const { title, content, category, status, order, publishedAt } = req.body as any;
 
@@ -145,7 +145,7 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // ✅ 4. PUT: แก้ไขข่าว (รับ JSON)
   // -------------------------------------------------------
-  app.put('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.put('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
       // รับ JSON Body
@@ -209,7 +209,7 @@ export async function newsRoutes(app: FastifyInstance) {
   });
 
   // DELETE: ลบข่าว
-  app.delete('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.delete('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
 

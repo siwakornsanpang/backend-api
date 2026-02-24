@@ -38,7 +38,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: สร้างใหม่
-  app.post('/history', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.post('/history', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     const parts = req.parts();
     
     let term = '', years = '';
@@ -74,7 +74,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไข
-  app.put('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.put('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     
@@ -120,7 +120,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบ
-  app.delete('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.delete('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const memberId = parseInt(id);
 

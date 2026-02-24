@@ -28,7 +28,7 @@ export async function homeRoutes(app: FastifyInstance) {
   });
 
   // POST: แก้ไขใหม่ รองรับการเรียงลำดับผสมกัน
-  app.post('/home-content', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
+  app.post('/home-content', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
     const parts = req.parts();
     
     let headerText = '';
