@@ -33,8 +33,6 @@ export const homeContent = pgTable('home_content', {
   banners: json('banners').$type<BannerItem[]>().default([]),
 
   headerText: text('header_text'),
-  subHeaderText: text('sub_header_text'),
-  bodyText: text('body_text'),
   popupImageUrl: text('popup_image_url'),
   showPopup: boolean('show_popup').default(true),
   updatedAt: timestamp('updated_at').defaultNow()
@@ -117,7 +115,7 @@ export const agencies = pgTable('agencies', {
   description: text('description'),          // 🔥 เพิ่ม: คำอธิบายสั้นๆ
   imageUrl: text('image_url'),               // 🔥 เพิ่ม: Logo หน่วยงาน
   url: text('url').notNull(),                // ลิงก์เว็บไซต์
-  status: text('status').default('online'),  
-  order: integer('order').default(0),        
+  status: text('status').default('online'),
+  order: integer('order').default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });

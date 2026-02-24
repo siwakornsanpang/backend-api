@@ -210,8 +210,39 @@ export async function newsRoutes(app: FastifyInstance) {
 
   // DELETE: ลบข่าว
   app.delete('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
-    const { id } = req.params as { id: string };
-    await db.delete(news).where(eq(news.id, parseInt(id)));
-    return { success: true, message: 'ลบข่าวเรียบร้อย' };
+    try {
+      const { id } = req.params as { id: string };
+
+      // 1. ดึงข้อมูลข่าวออกมาก่อน เพื่อเอาเนื้อหา (content)
+      const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
+
+      if (existing.length > 0) {
+        const content = existing[0].content || '';
+        const images = extractImageUrls(content); // ใช้ Helper function เดิม
+
+        if (images.length > 0) {
+          // แปลง URL เป็น Path
+          const filePathsToDelete = images
+            .map(url => getFilePathFromUrl(url, 'uploads'))
+            .filter((path): path is string => path !== null);
+
+          if (filePathsToDelete.length > 0) {
+            // สั่งลบรูปออกจาก Supabase
+            await supabase.storage
+              .from('uploads')
+              .remove(filePathsToDelete);
+          }
+        }
+      }
+
+      // 2. ลบข้อมูลจาก Database ตามปกติ
+      await db.delete(news).where(eq(news.id, parseInt(id)));
+
+      return { success: true, message: 'ลบข่าวเรียบร้อย' };
+
+    } catch (err) {
+      console.error(err);
+      return reply.status(500).send({ message: 'Failed to delete news' });
+    }
   });
 }
