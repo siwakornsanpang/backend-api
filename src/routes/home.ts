@@ -19,7 +19,7 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function homeRoutes(app: FastifyInstance) {
   
   // GET: (เหมือนเดิม)
-  app.get('/home-content', { preHandler: [verifyToken] }, async () => {
+  app.get('/home-content', async () => {
     const content = await db.select().from(homeContent).limit(1);
     if (content.length === 0) {
       return { banners: [], headerText: "", subHeaderText: "", bodyText: "", popupImageUrl: "", showPopup: false };

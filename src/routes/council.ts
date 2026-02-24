@@ -37,7 +37,7 @@ function getFilePathFromUrl(url: string): string | null {
 export async function councilRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล
-  app.get('/council', { preHandler: [verifyToken] }, async (req, reply) => {
+  app.get('/council', async (req, reply) => {
     return await db.select()
       .from(councilMembers)
       .orderBy(asc(councilMembers.type), asc(councilMembers.order));

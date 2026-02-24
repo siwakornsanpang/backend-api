@@ -17,7 +17,7 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function lawRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล
-  app.get('/laws/:category', { preHandler: [verifyToken] }, async (req, reply) => {
+  app.get('/laws/:category', async (req, reply) => {
     const { category } = req.params as { category: string };
     return await db.select().from(laws)
       .where(eq(laws.category, category))

@@ -32,7 +32,7 @@ function getFilePathFromUrl(url: string): string | null {
 export async function historyRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล (เรียงตาม id หรือ วาระ ก็ได้)
-  app.get('/history', { preHandler: [verifyToken] }, async (req, reply) => {
+  app.get('/history', async (req, reply) => {
     // เรียง id ล่าสุดขึ้นก่อน (หรือจะเรียงตาม term ก็ได้)
     return await db.select().from(councilHistory).orderBy(desc(councilHistory.id));
   });

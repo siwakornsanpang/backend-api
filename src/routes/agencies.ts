@@ -18,7 +18,7 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function agencyRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล (รองรับการกรองตาม category)
-  app.get('/agencies', { preHandler: [verifyToken] }, async (req, reply) => {
+  app.get('/agencies', async (req, reply) => {
     const { category } = req.query as { category?: string };
     
     let query = db.select().from(agencies);

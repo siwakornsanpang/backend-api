@@ -10,7 +10,7 @@ export async function pharmacistRoutes(app: FastifyInstance) {
 
   // GET /api/pharmacists
   // หรือ /api/pharmacists?q=ภักดี (ค้นหา)
-app.get('/pharmacists', { preHandler: [verifyToken] }, async (req, reply) => {
+app.get('/pharmacists', async (req, reply) => {
   const { q } = req.query as { q?: string };
 
   // กรณี 1: ไม่มีการค้นหา (ตัวปัญหาคือตรงนี้)
@@ -40,7 +40,7 @@ app.get('/pharmacists', { preHandler: [verifyToken] }, async (req, reply) => {
 });
 
   // GET /api/pharmacists/:id (เผื่อกดดูรายละเอียด)
-  app.get('/pharmacists/:id', { preHandler: [verifyToken] }, async (req, reply) => {
+  app.get('/pharmacists/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const result = await db.select()
         .from(pharmacists)

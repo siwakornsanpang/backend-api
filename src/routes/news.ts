@@ -55,7 +55,7 @@ function getFilePathFromUrl(url: string, bucketName: string = 'uploads'): string
 export async function newsRoutes(app: FastifyInstance) {
 
   // GET ... (เหมือนเดิม)
-  app.get('/news', { preHandler: [verifyToken] }, async (req, reply) => {
+  app.get('/news', async (req, reply) => {
     // ... code เดิม ...
     const { category, status } = req.query as { category?: string; status?: string };
     const conditions = [];
@@ -67,7 +67,7 @@ export async function newsRoutes(app: FastifyInstance) {
     return result;
   });
 
-  app.get('/news/:id', { preHandler: [verifyToken] }, async (req, reply) => {
+  app.get('/news/:id', async (req, reply) => {
     // ... code เดิม ...
     const { id } = req.params as { id: string };
     const result = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
