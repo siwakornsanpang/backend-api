@@ -2,6 +2,16 @@
 
 import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json } from 'drizzle-orm/pg-core';
 
+// ตาราง Users สำหรับระบบ RBAC
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 50 }).notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  displayName: text('display_name'),
+  role: text('role').notNull().default('viewer'), // admin | editor | viewer
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 
 
 

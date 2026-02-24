@@ -3,13 +3,14 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { pharmacists } from '../db/schema';
 import { ilike, or, eq ,asc} from 'drizzle-orm';
+import { verifyToken } from '../utils/authGuard';
 
 
 export async function pharmacistRoutes(app: FastifyInstance) {
 
   // GET /api/pharmacists
   // หรือ /api/pharmacists?q=ภักดี (ค้นหา)
-app.get('/pharmacists', async (req, reply) => {
+app.get('/pharmacists', { preHandler: [verifyToken] }, async (req, reply) => {
   const { q } = req.query as { q?: string };
 
   // กรณี 1: ไม่มีการค้นหา (ตัวปัญหาคือตรงนี้)
@@ -39,7 +40,7 @@ app.get('/pharmacists', async (req, reply) => {
 });
 
   // GET /api/pharmacists/:id (เผื่อกดดูรายละเอียด)
-  app.get('/pharmacists/:id', async (req, reply) => {
+  app.get('/pharmacists/:id', { preHandler: [verifyToken] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const result = await db.select()
         .from(pharmacists)

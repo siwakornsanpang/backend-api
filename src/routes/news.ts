@@ -5,6 +5,7 @@ import { news } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
+import { verifyToken, requireRole } from '../utils/authGuard';
 
 // ✅ 1. เพิ่ม Helper Function นี้ไว้บนสุด (นอก export function)
 // ฟังก์ชันนี้จะช่วยแปลง Stream เป็น Buffer โดยไม่ทำให้ล่มง่ายๆ
@@ -54,7 +55,7 @@ function getFilePathFromUrl(url: string, bucketName: string = 'uploads'): string
 export async function newsRoutes(app: FastifyInstance) {
 
   // GET ... (เหมือนเดิม)
-  app.get('/news', async (req, reply) => {
+  app.get('/news', { preHandler: [verifyToken] }, async (req, reply) => {
     // ... code เดิม ...
     const { category, status } = req.query as { category?: string; status?: string };
     const conditions = [];
@@ -66,7 +67,7 @@ export async function newsRoutes(app: FastifyInstance) {
     return result;
   });
 
-  app.get('/news/:id', async (req, reply) => {
+  app.get('/news/:id', { preHandler: [verifyToken] }, async (req, reply) => {
     // ... code เดิม ...
     const { id } = req.params as { id: string };
     const result = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
@@ -77,7 +78,7 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // ✅ 2. API Upload Image (แก้ไขใหม่ รับมือ Stream)
   // -------------------------------------------------------
-  app.post('/news/upload-image', async (req, reply) => {
+  app.post('/news/upload-image', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     try {
       // เมื่อเอา attachFieldsToBody ออก เราต้องใช้ req.file()
       const data = await req.file();
@@ -120,7 +121,7 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // ✅ 3. POST: สร้างข่าว (JSON Body ปกติ)
   // -------------------------------------------------------
-  app.post('/news', async (req, reply) => {
+  app.post('/news', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     // พอเอา attachFieldsToBody ออก Fastify จะกลับมาอ่าน JSON ใน req.body ได้ปกติโดยไม่ต้องทำอะไรเพิ่ม
     const { title, content, category, status, order, publishedAt } = req.body as any;
 
@@ -144,7 +145,7 @@ export async function newsRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // ✅ 4. PUT: แก้ไขข่าว (รับ JSON)
   // -------------------------------------------------------
-  app.put('/news/:id', async (req, reply) => {
+  app.put('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
       // รับ JSON Body
@@ -208,7 +209,7 @@ export async function newsRoutes(app: FastifyInstance) {
   });
 
   // DELETE: ลบข่าว
-  app.delete('/news/:id', async (req, reply) => {
+  app.delete('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     await db.delete(news).where(eq(news.id, parseInt(id)));
     return { success: true, message: 'ลบข่าวเรียบร้อย' };

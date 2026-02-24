@@ -2,9 +2,10 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { councilHistory } from '../db/schema';
-import { eq, desc } from 'drizzle-orm'; // ใช้ desc เพื่อเรียงวาระล่าสุดขึ้นก่อน
+import { eq, desc } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
+import { verifyToken, requireRole } from '../utils/authGuard';
 
 // Helper functions (เหมือนเดิม)
 async function streamToBuffer(stream: any): Promise<Buffer> {
@@ -31,13 +32,13 @@ function getFilePathFromUrl(url: string): string | null {
 export async function historyRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล (เรียงตาม id หรือ วาระ ก็ได้)
-  app.get('/history', async (req, reply) => {
+  app.get('/history', { preHandler: [verifyToken] }, async (req, reply) => {
     // เรียง id ล่าสุดขึ้นก่อน (หรือจะเรียงตาม term ก็ได้)
     return await db.select().from(councilHistory).orderBy(desc(councilHistory.id));
   });
 
   // 2. POST: สร้างใหม่
-  app.post('/history', async (req, reply) => {
+  app.post('/history', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const parts = req.parts();
     
     let term = '', years = '';
@@ -73,7 +74,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไข
-  app.put('/history/:id', async (req, reply) => {
+  app.put('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     
@@ -119,7 +120,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบ
-  app.delete('/history/:id', async (req, reply) => {
+  app.delete('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const memberId = parseInt(id);
 

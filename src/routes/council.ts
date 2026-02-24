@@ -5,6 +5,7 @@ import { councilMembers } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
+import { verifyToken, requireRole } from '../utils/authGuard';
 
 // Helper: แปลง Stream เป็น Buffer
 async function streamToBuffer(stream: any): Promise<Buffer> {
@@ -36,14 +37,14 @@ function getFilePathFromUrl(url: string): string | null {
 export async function councilRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล
-  app.get('/council', async (req, reply) => {
+  app.get('/council', { preHandler: [verifyToken] }, async (req, reply) => {
     return await db.select()
       .from(councilMembers)
       .orderBy(asc(councilMembers.type), asc(councilMembers.order));
   });
 
   // 2. POST: สร้างข้อมูลใหม่
-  app.post('/council', async (req, reply) => {
+  app.post('/council', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const parts = req.parts();
     let name = '', position = '', type = 'elected', order = 99, imageUrl = '', background = '';
 
@@ -97,7 +98,7 @@ export async function councilRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไขข้อมูล
-  app.put('/council/:id', async (req, reply) => {
+  app.put('/council/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     
@@ -156,7 +157,7 @@ export async function councilRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบ
-app.delete('/council/:id', async (req, reply) => {
+app.delete('/council/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const memberId = parseInt(id);
 

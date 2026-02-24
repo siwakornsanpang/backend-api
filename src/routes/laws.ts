@@ -5,6 +5,7 @@ import { laws } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
+import { verifyToken, requireRole } from '../utils/authGuard';
 
 // Helper: แปลงไฟล์เป็น Buffer
 async function streamToBuffer(stream: any): Promise<Buffer> {
@@ -16,7 +17,7 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function lawRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล
-  app.get('/laws/:category', async (req, reply) => {
+  app.get('/laws/:category', { preHandler: [verifyToken] }, async (req, reply) => {
     const { category } = req.params as { category: string };
     return await db.select().from(laws)
       .where(eq(laws.category, category))
@@ -24,7 +25,7 @@ export async function lawRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: เพิ่มข้อมูลใหม่
-  app.post('/laws', async (req, reply) => {
+  app.post('/laws', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const parts = req.parts();
     let title = '', category = '', announcedAt = '', order = 0, pdfUrl = '', status = 'online';
 
@@ -52,7 +53,7 @@ export async function lawRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไข (แก้ Bug ข้อมูลหายตรงนี้!)
-  app.put('/laws/:id', async (req, reply) => {
+  app.put('/laws/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     
@@ -104,7 +105,7 @@ export async function lawRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE
-  app.delete('/laws/:id', async (req, reply) => {
+  app.delete('/laws/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     await db.delete(laws).where(eq(laws.id, parseInt(id)));
     return { success: true };

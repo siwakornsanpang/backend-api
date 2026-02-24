@@ -6,6 +6,7 @@ import { eq, asc } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import { randomUUID } from 'crypto';
 import path from 'path';
+import { verifyToken, requireRole } from '../utils/authGuard';
 
 // Helper: แปลง Stream เป็น Buffer สำหรับอัปโหลด
 async function streamToBuffer(stream: any): Promise<Buffer> {
@@ -17,7 +18,7 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function agencyRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงข้อมูล (รองรับการกรองตาม category)
-  app.get('/agencies', async (req, reply) => {
+  app.get('/agencies', { preHandler: [verifyToken] }, async (req, reply) => {
     const { category } = req.query as { category?: string };
     
     let query = db.select().from(agencies);
@@ -32,7 +33,7 @@ export async function agencyRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: เพิ่มข้อมูลใหม่
-  app.post('/agencies', async (req, reply) => {
+  app.post('/agencies', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const parts = req.parts();
     let data: any = {};
 
@@ -70,7 +71,7 @@ export async function agencyRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไขข้อมูล (ส่วนที่คุณติดปัญหา) ✅
-  app.put('/agencies/:id', async (req, reply) => {
+  app.put('/agencies/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     
@@ -109,7 +110,7 @@ export async function agencyRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบข้อมูล
-  app.delete('/agencies/:id', async (req, reply) => {
+  app.delete('/agencies/:id', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     await db.delete(agencies).where(eq(agencies.id, parseInt(id)));
     return { success: true };

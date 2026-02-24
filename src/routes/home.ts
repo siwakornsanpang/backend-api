@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { verifyToken, requireRole } from '../utils/authGuard';
 
 async function streamToBuffer(stream: any): Promise<Buffer> {
   const chunks = [];
@@ -18,7 +19,7 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 export async function homeRoutes(app: FastifyInstance) {
   
   // GET: (เหมือนเดิม)
-  app.get('/home-content', async () => {
+  app.get('/home-content', { preHandler: [verifyToken] }, async () => {
     const content = await db.select().from(homeContent).limit(1);
     if (content.length === 0) {
       return { banners: [], headerText: "", subHeaderText: "", bodyText: "", popupImageUrl: "", showPopup: false };
@@ -27,7 +28,7 @@ export async function homeRoutes(app: FastifyInstance) {
   });
 
   // POST: แก้ไขใหม่ รองรับการเรียงลำดับผสมกัน
-  app.post('/home-content', async (req, reply) => {
+  app.post('/home-content', { preHandler: [verifyToken, requireRole('admin', 'editor')] }, async (req, reply) => {
     const parts = req.parts();
     
     let headerText = '';
