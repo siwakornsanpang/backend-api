@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { councilHistory } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { verifyToken, requireRole } from '../utils/authGuard';
+import { verifyToken, requirePermission } from '../utils/authGuard';
 import { streamToBuffer, uploadToStorage, deleteFromStorage } from '../utils/upload';
 
 export async function historyRoutes(app: FastifyInstance) {
@@ -14,7 +14,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: สร้างใหม่
-  app.post('/history', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.post('/history', { preHandler: [verifyToken, requirePermission('manage_history')] }, async (req, reply) => {
     const parts = req.parts();
     let term = '', years = '', presidentName = '', secretaryName = '';
     let presidentImage = '', secretaryImage = '';
@@ -42,7 +42,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไข
-  app.put('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.put('/history/:id', { preHandler: [verifyToken, requirePermission('manage_history')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
 
@@ -80,7 +80,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบ
-  app.delete('/history/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.delete('/history/:id', { preHandler: [verifyToken, requirePermission('manage_history')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const memberId = parseInt(id);
 

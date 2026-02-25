@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { permissions, rolePermissions, users } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { verifyToken, requireRole } from '../utils/authGuard';
+import { verifyToken, requirePermission } from '../utils/authGuard';
 
 export async function permissionRoutes(app: FastifyInstance) {
 
@@ -12,12 +12,12 @@ export async function permissionRoutes(app: FastifyInstance) {
   // =============================================================
 
   // GET /permissions — ดึง permissions ทั้งหมด
-  app.get('/permissions', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.get('/permissions', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     return await db.select().from(permissions);
   });
 
   // POST /permissions — สร้าง permission ใหม่
-  app.post('/permissions', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.post('/permissions', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const { key, label, group } = req.body as { key: string; label: string; group?: string };
 
     if (!key || !label) {
@@ -38,7 +38,7 @@ export async function permissionRoutes(app: FastifyInstance) {
   });
 
   // DELETE /permissions/:key — ลบ permission
-  app.delete('/permissions/:key', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.delete('/permissions/:key', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const { key } = req.params as { key: string };
     
     // ลบ role_permissions ที่เกี่ยวข้องก่อน
@@ -54,7 +54,7 @@ export async function permissionRoutes(app: FastifyInstance) {
   // =============================================================
 
   // GET /permissions/roles — ดึง roles ทั้งหมดพร้อมจำนวน permission
-  app.get('/permissions/roles', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.get('/permissions/roles', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     // ดึง roles ที่ไม่ซ้ำจาก role_permissions + users table
     const rolesFromPerms = await db.selectDistinct({ role: rolePermissions.role }).from(rolePermissions);
     const rolesFromUsers = await db.selectDistinct({ role: users.role }).from(users);
@@ -75,14 +75,14 @@ export async function permissionRoutes(app: FastifyInstance) {
   });
 
   // GET /permissions/roles/:role — ดึง permissions ของ role
-  app.get('/permissions/roles/:role', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.get('/permissions/roles/:role', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const { role } = req.params as { role: string };
     const result = await db.select().from(rolePermissions).where(eq(rolePermissions.role, role));
     return result.map(r => r.permissionKey);
   });
 
   // PUT /permissions/roles/:role — อัพเดท permissions ของ role
-  app.put('/permissions/roles/:role', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.put('/permissions/roles/:role', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const { role } = req.params as { role: string };
     const { permissions: permKeys } = req.body as { permissions: string[] };
 
@@ -100,7 +100,7 @@ export async function permissionRoutes(app: FastifyInstance) {
   });
 
   // POST /permissions/roles — สร้าง Role ใหม่
-  app.post('/permissions/roles', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.post('/permissions/roles', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const { role, permissions: permKeys } = req.body as { role: string; permissions?: string[] };
 
     if (!role) {
@@ -127,7 +127,7 @@ export async function permissionRoutes(app: FastifyInstance) {
   });
 
   // DELETE /permissions/roles/:role — ลบ Role
-  app.delete('/permissions/roles/:role', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.delete('/permissions/roles/:role', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const { role } = req.params as { role: string };
 
     // ห้ามลบ admin
@@ -169,7 +169,7 @@ export async function permissionRoutes(app: FastifyInstance) {
   // SEED (เริ่มต้น)
   // =============================================================
 
-  app.post('/permissions/seed', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.post('/permissions/seed', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const existing = await db.select().from(permissions).limit(1);
     if (existing.length > 0) {
       return reply.status(400).send({ message: 'Permissions มีอยู่แล้ว ไม่ต้อง seed ซ้ำ' });

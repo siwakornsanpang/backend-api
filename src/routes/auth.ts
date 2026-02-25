@@ -4,7 +4,7 @@ import { db } from '../db';
 import { users, permissions, rolePermissions } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { verifyToken, requireRole, AuthUser } from '../utils/authGuard';
+import { verifyToken, requireRole, requirePermission, AuthUser } from '../utils/authGuard';
 
 const SALT_ROUNDS = 12;
 
@@ -134,7 +134,7 @@ export async function authRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // GET /auth/users — ดูรายชื่อ Users ทั้งหมด (admin only)
   // -------------------------------------------------------
-  app.get('/auth/users', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.get('/auth/users', { preHandler: [verifyToken, requirePermission('manage_users')] }, async (req, reply) => {
     const result = await db.select({
       id: users.id,
       username: users.username,
@@ -149,7 +149,7 @@ export async function authRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // POST /auth/users — สร้าง User ใหม่ (admin only)
   // -------------------------------------------------------
-  app.post('/auth/users', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.post('/auth/users', { preHandler: [verifyToken, requirePermission('manage_users')] }, async (req, reply) => {
     const { username, password, displayName, role } = req.body as {
       username: string;
       password: string;
@@ -194,7 +194,7 @@ export async function authRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // DELETE /auth/users/:id — ลบ User (admin only)
   // -------------------------------------------------------
-  app.delete('/auth/users/:id', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.delete('/auth/users/:id', { preHandler: [verifyToken, requirePermission('manage_users')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const userId = parseInt(id);
 
