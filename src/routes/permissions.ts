@@ -15,6 +15,30 @@ export async function permissionRoutes(app: FastifyInstance) {
   });
 
   // -------------------------------------------------------
+  // POST /permissions — สร้าง permission ใหม่
+  // -------------------------------------------------------
+  app.post('/permissions', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+    const { key, label, group } = req.body as { key: string; label: string; group?: string };
+
+    if (!key || !label) {
+      return reply.status(400).send({ message: 'กรุณากรอก key และ label' });
+    }
+
+    // เช็คว่า key ซ้ำหรือไม่
+    const existing = await db.select().from(permissions).where(eq(permissions.key, key)).limit(1);
+    if (existing.length > 0) {
+      return reply.status(409).send({ message: `Key "${key}" มีอยู่แล้ว` });
+    }
+
+    const result = await db.insert(permissions).values({ key, label, group: group || null }).returning();
+
+    // เพิ่มให้ admin อัตโนมัติ
+    await db.insert(rolePermissions).values({ role: 'admin', permissionKey: key });
+
+    return { success: true, permission: result[0] };
+  });
+
+  // -------------------------------------------------------
   // GET /permissions/roles/:role — ดึง permissions ของ role
   // -------------------------------------------------------
   app.get('/permissions/roles/:role', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
