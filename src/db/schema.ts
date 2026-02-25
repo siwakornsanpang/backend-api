@@ -12,7 +12,20 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ตาราง Permissions — สิทธิ์ที่กำหนดได้
+export const permissions = pgTable('permissions', {
+  id: serial('id').primaryKey(),
+  key: varchar('key', { length: 100 }).notNull().unique(),   // เช่น 'manage_news', 'manage_council'
+  label: text('label').notNull(),                             // ชื่อแสดงผล เช่น 'จัดการข่าว'
+  group: text('group'),                                       // กลุ่ม เช่น 'เว็บไซต์', 'ระบบ'
+});
 
+// ตาราง Role-Permissions — mapping role → permissions
+export const rolePermissions = pgTable('role_permissions', {
+  id: serial('id').primaryKey(),
+  role: text('role').notNull(),           // เช่น 'admin', 'editor'
+  permissionKey: text('permission_key').notNull(),  // เช่น 'manage_news'
+});
 
 
 // src/db/schema.ts (ต่อท้ายไฟล์เดิม)

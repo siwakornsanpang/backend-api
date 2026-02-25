@@ -1,12 +1,22 @@
 // src/routes/auth.ts
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
-import { users } from '../db/schema';
+import { users, permissions, rolePermissions } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { verifyToken, requireRole, AuthUser } from '../utils/authGuard';
 
 const SALT_ROUNDS = 12;
+
+/** ดึง permissions ของ role จาก DB */
+async function getPermissionsForRole(role: string): Promise<string[]> {
+  if (role === 'admin') {
+    const allPerms = await db.select().from(permissions);
+    return allPerms.map(p => p.key);
+  }
+  const result = await db.select().from(rolePermissions).where(eq(rolePermissions.role, role));
+  return result.map(r => r.permissionKey);
+}
 
 export async function authRoutes(app: FastifyInstance) {
 
@@ -47,6 +57,9 @@ export async function authRoutes(app: FastifyInstance) {
       { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
     );
 
+    // ดึง permissions ของ role
+    const userPermissions = await getPermissionsForRole(user.role);
+
     return {
       success: true,
       token,
@@ -55,6 +68,7 @@ export async function authRoutes(app: FastifyInstance) {
         username: user.username,
         displayName: user.displayName || user.username,
         role: user.role,
+        permissions: userPermissions,
       },
     };
   });
@@ -76,7 +90,9 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(404).send({ message: 'ไม่พบข้อมูลผู้ใช้' });
     }
 
-    return result[0];
+    const userPermissions = await getPermissionsForRole(result[0].role!);
+
+    return { ...result[0], permissions: userPermissions };
   });
 
   // -------------------------------------------------------

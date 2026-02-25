@@ -15,6 +15,7 @@ import { newsRoutes } from "./routes/news";
 import { historyRoutes } from "./routes/history";
 import { agencyRoutes } from "./routes/agencies";
 import { authRoutes } from "./routes/auth";
+import { permissionRoutes } from "./routes/permissions";
 
 const app = Fastify({ logger: true });
 
@@ -54,6 +55,7 @@ app.register(multipart, {
 
 // --- 2. Register Routes ---
 app.register(authRoutes);         // ✅ Auth (login, me, seed, user management)
+app.register(permissionRoutes);   // ✅ สิทธิ์ (permissions, role-permissions)
 app.register(homeRoutes);         // ✅ หน้าแรก
 app.register(pharmacistRoutes);   // ✅ เภสัชกร
 app.register(lawRoutes);          // ✅ กฎหมาย
