@@ -161,11 +161,12 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(400).send({ message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
     }
 
-    // เช็คว่า role ถูกต้อง
-    const validRoles = ['admin', 'editor', 'viewer', 'web_editor'];
+    // เช็คว่า role มีอยู่ในระบบ (จาก role_permissions หรือ users table)
     const userRole = role || 'viewer';
-    if (!validRoles.includes(userRole)) {
-      return reply.status(400).send({ message: `Role ไม่ถูกต้อง: ต้องเป็น ${validRoles.join(', ')}` });
+    const roleExists = await db.select().from(rolePermissions).where(eq(rolePermissions.role, userRole)).limit(1);
+    const roleInUsers = await db.select().from(users).where(eq(users.role, userRole)).limit(1);
+    if (roleExists.length === 0 && roleInUsers.length === 0 && userRole !== 'viewer') {
+      return reply.status(400).send({ message: `Role "${userRole}" ไม่มีในระบบ — กรุณาสร้าง Role ก่อนที่หน้าจัดการสิทธิ์` });
     }
 
     // เช็คว่า username ซ้ำหรือไม่
