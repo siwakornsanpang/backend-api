@@ -132,3 +132,30 @@ export const agencies = pgTable('agencies', {
   order: integer('order').default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const webSettings = pgTable('web_settings', {
+  id: serial('id').primaryKey(),
+
+  // ข้อมูลทั่วไป
+  siteNameTh: varchar('site_name_th', { length: 255 }).notNull().default('สภาเภสัชกรรม'),
+  siteNameEn: varchar('site_name_en', { length: 255 }).notNull().default('The Pharmacy Council of Thailand'),
+  slogan: text('slogan'),
+  logoPath: varchar('logo_path', { length: 512 }),
+
+  // ข้อมูลติดต่อ
+  address: text('address'),
+  phone: varchar('phone', { length: 50 }),
+  fax: varchar('fax', { length: 50 }),
+  email: varchar('email', { length: 255 }),
+  googleMapsUrl: text('google_maps_url'),
+  googleMapsEmbed: text('google_maps_embed'),
+
+  // โซเชียลมีเดีย
+  facebookUrl: varchar('facebook_url', { length: 512 }),
+  lineId: varchar('line_id', { length: 100 }),
+  youtubeUrl: varchar('youtube_url', { length: 512 }),
+
+  // ข้อมูลอื่นๆ
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
