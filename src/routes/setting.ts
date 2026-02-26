@@ -43,8 +43,8 @@ export async function webSettingRoutes(app: FastifyInstance) {
         return settings[0];
     });
 
-    // POST: อัปเดตข้อมูลการตั้งค่าเว็บไซต์ (Admin เท่านั้น)
-    app.post('/web-settings', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+    // POST: อัปเดตข้อมูลการตั้งค่าเว็บไซต์ 
+    app.post('/web-settings', { preHandler: [verifyToken, requireRole('manage_web_settings')] }, async (req, reply) => {
         const parts = req.parts();
 
         let updateData: any = {
