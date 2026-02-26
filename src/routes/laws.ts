@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { laws } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
-import { verifyToken, requireRole } from '../utils/authGuard';
+import { verifyToken, requirePermission } from '../utils/authGuard';
 import { streamToBuffer, uploadToStorage } from '../utils/upload';
 
 export async function lawRoutes(app: FastifyInstance) {
@@ -17,7 +17,7 @@ export async function lawRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: เพิ่มข้อมูลใหม่
-  app.post('/laws', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.post('/laws', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
     const parts = req.parts();
     let title = '', category = '', announcedAt = '', order = 0, pdfUrl = '', status = 'online';
 
@@ -40,7 +40,7 @@ export async function lawRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไข
-  app.put('/laws/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.put('/laws/:id', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
 
@@ -76,7 +76,7 @@ export async function lawRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE
-  app.delete('/laws/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.delete('/laws/:id', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     await db.delete(laws).where(eq(laws.id, parseInt(id)));
     return { success: true };

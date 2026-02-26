@@ -4,7 +4,7 @@ import { db } from '../db';
 import { users, permissions, rolePermissions } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { verifyToken, requireRole, AuthUser } from '../utils/authGuard';
+import { verifyToken, requireRole, requirePermission, AuthUser } from '../utils/authGuard';
 
 const SALT_ROUNDS = 12;
 
@@ -134,7 +134,7 @@ export async function authRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // GET /auth/users — ดูรายชื่อ Users ทั้งหมด (admin only)
   // -------------------------------------------------------
-  app.get('/auth/users', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.get('/auth/users', { preHandler: [verifyToken, requirePermission('manage_users')] }, async (req, reply) => {
     const result = await db.select({
       id: users.id,
       username: users.username,
@@ -149,7 +149,7 @@ export async function authRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // POST /auth/users — สร้าง User ใหม่ (admin only)
   // -------------------------------------------------------
-  app.post('/auth/users', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.post('/auth/users', { preHandler: [verifyToken, requirePermission('manage_users')] }, async (req, reply) => {
     const { username, password, displayName, role } = req.body as {
       username: string;
       password: string;
@@ -161,11 +161,12 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(400).send({ message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
     }
 
-    // เช็คว่า role ถูกต้อง
-    const validRoles = ['admin', 'editor', 'viewer', 'web_editor'];
+    // เช็คว่า role มีอยู่ในระบบ (จาก role_permissions หรือ users table)
     const userRole = role || 'viewer';
-    if (!validRoles.includes(userRole)) {
-      return reply.status(400).send({ message: `Role ไม่ถูกต้อง: ต้องเป็น ${validRoles.join(', ')}` });
+    const roleExists = await db.select().from(rolePermissions).where(eq(rolePermissions.role, userRole)).limit(1);
+    const roleInUsers = await db.select().from(users).where(eq(users.role, userRole)).limit(1);
+    if (roleExists.length === 0 && roleInUsers.length === 0 && userRole !== 'viewer') {
+      return reply.status(400).send({ message: `Role "${userRole}" ไม่มีในระบบ — กรุณาสร้าง Role ก่อนที่หน้าจัดการสิทธิ์` });
     }
 
     // เช็คว่า username ซ้ำหรือไม่
@@ -194,7 +195,7 @@ export async function authRoutes(app: FastifyInstance) {
   // -------------------------------------------------------
   // DELETE /auth/users/:id — ลบ User (admin only)
   // -------------------------------------------------------
-  app.delete('/auth/users/:id', { preHandler: [verifyToken, requireRole('admin')] }, async (req, reply) => {
+  app.delete('/auth/users/:id', { preHandler: [verifyToken, requirePermission('manage_users')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const userId = parseInt(id);
 

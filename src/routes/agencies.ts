@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { agencies } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
-import { verifyToken, requireRole } from '../utils/authGuard';
+import { verifyToken, requirePermission } from '../utils/authGuard';
 import { streamToBuffer, uploadToStorage } from '../utils/upload';
 
 export async function agencyRoutes(app: FastifyInstance) {
@@ -20,7 +20,7 @@ export async function agencyRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: เพิ่มข้อมูลใหม่
-  app.post('/agencies', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.post('/agencies', { preHandler: [verifyToken, requirePermission('manage_agency')] }, async (req, reply) => {
     const parts = req.parts();
     const data: any = {};
 
@@ -48,7 +48,7 @@ export async function agencyRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไขข้อมูล
-  app.put('/agencies/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.put('/agencies/:id', { preHandler: [verifyToken, requirePermission('manage_agency')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
     const updateData: any = {};
@@ -70,7 +70,7 @@ export async function agencyRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบข้อมูล
-  app.delete('/agencies/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.delete('/agencies/:id', { preHandler: [verifyToken, requirePermission('manage_agency')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     await db.delete(agencies).where(eq(agencies.id, parseInt(id)));
     return { success: true };

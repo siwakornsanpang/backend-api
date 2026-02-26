@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { verifyToken, requireRole } from '../utils/authGuard';
+import { verifyToken, requirePermission } from '../utils/authGuard';
 
 async function streamToBuffer(stream: any): Promise<Buffer> {
   const chunks = [];
@@ -28,7 +28,7 @@ export async function homeRoutes(app: FastifyInstance) {
   });
 
   // POST: แก้ไขใหม่ รองรับการเรียงลำดับผสมกัน
-  app.post('/home-content', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.post('/home-content', { preHandler: [verifyToken, requirePermission('manage_home')] }, async (req, reply) => {
     const parts = req.parts();
     
     let headerText = '';

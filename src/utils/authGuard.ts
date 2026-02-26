@@ -1,5 +1,8 @@
 // src/utils/authGuard.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { db } from '../db';
+import { permissions, rolePermissions } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
 // Type สำหรับข้อมูล User ที่ถอดรหัสจาก JWT
 export interface AuthUser {
@@ -18,13 +21,9 @@ declare module '@fastify/jwt' {
 
 /**
  * Middleware: ตรวจสอบ JWT Token
- * ดึง token จาก Authorization: Bearer <token>
- * ถ้าถูกต้อง → ใส่ข้อมูล user ลงใน request.user
- * ถ้าไม่ถูกต้อง → ส่ง 401 Unauthorized
  */
 export async function verifyToken(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // @fastify/jwt จะ verify และใส่ user ให้อัตโนมัติ
     await request.jwtVerify();
   } catch (err) {
     return reply.status(401).send({
@@ -34,10 +33,7 @@ export async function verifyToken(request: FastifyRequest, reply: FastifyReply) 
 }
 
 /**
- * Middleware Factory: ตรวจสอบ Role
- * ใช้หลัง verifyToken เท่านั้น
- * ถ้า user.role อยู่ใน roles ที่อนุญาต → ผ่าน
- * ถ้าไม่ → ส่ง 403 Forbidden
+ * Middleware Factory: ตรวจสอบ Role (เก็บไว้สำหรับ backward compatibility)
  */
 export function requireRole(...roles: string[]) {
   return async function (request: FastifyRequest, reply: FastifyReply) {
@@ -56,3 +52,42 @@ export function requireRole(...roles: string[]) {
     }
   };
 }
+
+/**
+ * Middleware Factory: ตรวจสอบ Permission จาก DB
+ * ใช้หลัง verifyToken เท่านั้น
+ * admin → ผ่านทุก permission อัตโนมัติ
+ * role อื่น → เช็คจาก role_permissions table
+ */
+export function requirePermission(...permissionKeys: string[]) {
+  return async function (request: FastifyRequest, reply: FastifyReply) {
+    const user = request.user as AuthUser;
+
+    if (!user) {
+      return reply.status(401).send({
+        message: 'Unauthorized: ไม่พบข้อมูลผู้ใช้'
+      });
+    }
+
+    // admin ผ่านทุก permission
+    if (user.role === 'admin') return;
+
+    // ดึง permissions ของ role จาก DB
+    const userPerms = await db
+      .select()
+      .from(rolePermissions)
+      .where(eq(rolePermissions.role, user.role));
+    
+    const userPermKeys = userPerms.map(p => p.permissionKey);
+
+    // เช็คว่ามี permission ที่ต้องการอย่างน้อย 1 ตัว
+    const hasPermission = permissionKeys.some(key => userPermKeys.includes(key));
+
+    if (!hasPermission) {
+      return reply.status(403).send({
+        message: `Forbidden: ไม่มีสิทธิ์ "${permissionKeys.join(', ')}" สำหรับ role "${user.role}"`
+      });
+    }
+  };
+}
+

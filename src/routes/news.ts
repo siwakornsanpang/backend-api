@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { news } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
-import { verifyToken, requireRole } from '../utils/authGuard';
+import { verifyToken, requirePermission } from '../utils/authGuard';
 import { streamToBuffer, uploadToStorage, deleteFromStorage, getFilePathFromUrl } from '../utils/upload';
 import { supabase } from '../utils/supabase';
 
@@ -41,7 +41,7 @@ export async function newsRoutes(app: FastifyInstance) {
   });
 
   // POST: Upload Image (สำหรับ Editor)
-  app.post('/news/upload-image', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.post('/news/upload-image', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
     try {
       const data = await req.file();
       if (!data) return reply.status(400).send({ message: 'No file uploaded' });
@@ -58,7 +58,7 @@ export async function newsRoutes(app: FastifyInstance) {
   });
 
   // POST: สร้างข่าว (JSON Body)
-  app.post('/news', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.post('/news', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
     const { title, content, category, status, order, publishedAt } = req.body as any;
 
     if (!title || !content) {
@@ -78,7 +78,7 @@ export async function newsRoutes(app: FastifyInstance) {
   });
 
   // PUT: แก้ไขข่าว (JSON Body)
-  app.put('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.put('/news/:id', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
       const { title, content, category, status, order, publishedAt } = req.body as any;
@@ -122,7 +122,7 @@ export async function newsRoutes(app: FastifyInstance) {
   });
 
   // DELETE: ลบข่าว + ลบรูปจาก Storage
-  app.delete('/news/:id', { preHandler: [verifyToken, requireRole('admin', 'editor', 'web_editor')] }, async (req, reply) => {
+  app.delete('/news/:id', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
       const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
