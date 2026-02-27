@@ -41,7 +41,7 @@ export async function councilRoutes(app: FastifyInstance) {
     }
 
     await db.insert(councilMembers).values({
-      name, position, type, order,
+      name, position, type, order, background,
       imageUrl: imageUrl || null,
       originalImageUrl: originalImageUrl || null,
     });
