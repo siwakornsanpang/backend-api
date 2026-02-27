@@ -87,11 +87,10 @@ export const councilMembers = pgTable('council_members', {
   position: text('position').notNull(),
   type: text('type').notNull(),
   imageUrl: text('image_url'),
+  originalImageUrl: text('original_image_url'),
   order: integer('order').notNull(),
   background: text('background'),
-}
-  // 🔥 ลบส่วน (t) => ({ unq: ... }) ตรงนี้ทิ้งไปเลยครับ ให้จบที่ปีกกาปิด } พอ
-);
+});
 
 
 export const pharmacists = pgTable('pharmacists', {
