@@ -26,9 +26,11 @@ export async function newsRoutes(app: FastifyInstance) {
     const conditions = [];
     if (category) conditions.push(eq(news.category, category as any));
     if (status) conditions.push(eq(news.status, status as any));
+
     const result = await db.select().from(news)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(news.createdAt));
+      // เรียงตาม highlight ก่อน (true อยู่บน) แล้วตามด้วยวันที่เผยแพร่ล่าสุด
+      .orderBy(desc(news.isHighlight), desc(news.publishedAt), desc(news.createdAt));
     return result;
   });
 
@@ -59,21 +61,18 @@ export async function newsRoutes(app: FastifyInstance) {
 
   // POST: สร้างข่าว (JSON Body)
   app.post('/news', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
-    const { title, content, category, status, order, publishedAt } = req.body as any;
-
+    const { title, content, category, status, publishedAt, isHighlight } = req.body as any; // ดึง isHighlight ออกมา
     if (!title || !content) {
       return reply.status(400).send({ message: 'Title and content are required' });
     }
-
     const result = await db.insert(news).values({
       title,
       content,
       category: category || 'news',
       status: status || 'draft',
-      order: parseInt(order || '0'),
       publishedAt: publishedAt ? new Date(publishedAt) : (status === 'published' ? new Date() : null),
+      isHighlight: isHighlight ?? false, // บันทึกค่า highlight (ถ้าไม่มีให้เป็น false)
     }).returning();
-
     return { success: true, data: result[0] };
   });
 
@@ -81,8 +80,7 @@ export async function newsRoutes(app: FastifyInstance) {
   app.put('/news/:id', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const { title, content, category, status, order, publishedAt } = req.body as any;
-
+      const { title, content, category, status, publishedAt, isHighlight } = req.body as any; // ดึง isHighlight ออกมา
       const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
       if (existing.length === 0) return reply.status(404).send({ message: 'Not found' });
 
@@ -101,15 +99,13 @@ export async function newsRoutes(app: FastifyInstance) {
 
       const updateData: any = {
         title, content, category, status,
-        order: parseInt(order || '0'),
+        isHighlight: isHighlight ?? existing[0].isHighlight, // อัปเดตค่า highlight
         updatedAt: new Date(),
         publishedAt: publishedAt ? new Date(publishedAt) : existing[0].publishedAt,
       };
-
       if (status === 'published' && !updateData.publishedAt) {
         updateData.publishedAt = new Date();
       }
-
       const result = await db.update(news)
         .set(updateData)
         .where(eq(news.id, parseInt(id)))

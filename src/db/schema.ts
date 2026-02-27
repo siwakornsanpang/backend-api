@@ -1,6 +1,6 @@
 // src/db/schema.ts
 
-import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json, pgEnum } from 'drizzle-orm/pg-core';
 
 // ตาราง Users สำหรับระบบ RBAC
 export const users = pgTable('users', {
@@ -97,17 +97,19 @@ export const pharmacists = pgTable('pharmacists', {
   imageUrl: text('image_url'),
 });
 
+export const newsStatusEnum = pgEnum('news_status', ['draft', 'published']);
+export const newsCategoryEnum = pgEnum('news_category', ['news', 'recruitment', 'procurement']);
+
 export const news = pgTable('news', {
   id: serial('id').primaryKey(),
-  order: integer('order').default(0).unique(),      // ลำดับการแสดงผล
   title: text('title').notNull(),               // หัวข้อข่าว
   content: text('content').notNull(),           // เนื้อหาข่าว
-  status: text('status').default('draft'), // สถานะ (draft, published)
-  category: text('category').notNull(), // หมวดหมู่ข่าว (news, activity, announcement)
-  // images: json('images').$type<string[]>().default([]),
+  status: newsStatusEnum('status').default('draft').notNull(),
+  category: newsCategoryEnum('category').notNull(), // หมวดหมู่ข่าว
   createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
   updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
   publishedAt: timestamp('published_at'), // วันที่เผยแพร่
+  isHighlight: boolean('is_highlight').default(false), // ข่าวเด่น
 });
 
 
