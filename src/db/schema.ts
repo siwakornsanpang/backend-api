@@ -31,24 +31,32 @@ export const rolePermissions = pgTable('role_permissions', {
 
 // src/db/schema.ts (ต่อท้ายไฟล์เดิม)
 
+
 // ตารางสำหรับเก็บข้อมูลหน้าแรก (ข้อความ + ลิงก์รูปที่อัปโหลดแล้ว)
 
 type BannerItem = {
   id: string;
   url: string;
+  originalUrl: string;
+  title: string;
+  clickable: boolean;
+  linkUrl: string;
+  active: boolean;
+  order: number;
+};
+
+type PopupItem = {
+  id: string;
+  url: string;
+  title: string;
   active: boolean;
   order: number;
 };
 
 export const homeContent = pgTable('home_content', {
   id: serial('id').primaryKey(),
-
-  // 2. ⚠️ แก้บรรทัดนี้ครับ (สำคัญมาก! ต้องเป็น BannerItem[] เท่านั้น)
   banners: json('banners').$type<BannerItem[]>().default([]),
-
-  headerText: text('header_text'),
-  popupImageUrl: text('popup_image_url'),
-  showPopup: boolean('show_popup').default(true),
+  popups: json('popups').$type<PopupItem[]>().default([]),
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
