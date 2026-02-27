@@ -18,38 +18,33 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
 
 export async function homeRoutes(app: FastifyInstance) {
   
-  // GET: (เหมือนเดิม)
+  // GET: ดึงข้อมูลหน้าแรก
   app.get('/home-content', async () => {
     const content = await db.select().from(homeContent).limit(1);
     if (content.length === 0) {
-      return { banners: [], headerText: "", subHeaderText: "", bodyText: "", popupImageUrl: "", showPopup: false };
+      return { banners: [], popupImageUrl: "", showPopup: false };
     }
     return content[0];
   });
 
-  // POST: แก้ไขใหม่ รองรับการเรียงลำดับผสมกัน
+  // POST: บันทึกข้อมูลหน้าแรก
   app.post('/home-content', { preHandler: [verifyToken, requirePermission('manage_home')] }, async (req, reply) => {
     const parts = req.parts();
     
-    let headerText = '';
-    let subHeaderText = '';
-    let bodyText = '';
     let showPopup = false;
     
-    let bannerData: any[] = []; // JSON ที่บอกลำดับและสถานะ
-    let uploadedBannerUrls: string[] = []; // เก็บ URL ของรูปที่เพิ่งอัปโหลด
+    let bannerData: any[] = [];
+    let uploadedBannerUrls: string[] = [];
     
     let popupUrl = '';
     let hasNewPopup = false;
 
-    // 1. วนลูปรับไฟล์และข้อมูล
     for await (const part of parts) {
       if (part.type === 'file') {
         const ext = path.extname(part.filename);
         const filename = `home/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
         const fileBuffer = await streamToBuffer(part.file);
 
-        // Upload
         const { error } = await supabase.storage.from('uploads').upload(filename, fileBuffer, {
            contentType: part.mimetype, upsert: true 
         });
@@ -60,15 +55,10 @@ export async function homeRoutes(app: FastifyInstance) {
           popupUrl = data.publicUrl;
           hasNewPopup = true;
         } else if (part.fieldname === 'bannerFiles') {
-          // เก็บ URL รูปใหม่เข้า Array รอไว้ก่อน
           uploadedBannerUrls.push(data.publicUrl);
         }
 
       } else {
-        // Handle Fields
-        if (part.fieldname === 'headerText') headerText = part.value as string;
-        if (part.fieldname === 'subHeaderText') subHeaderText = part.value as string;
-        if (part.fieldname === 'bodyText') bodyText = part.value as string;
         if (part.fieldname === 'showPopup') showPopup = part.value === 'true';
         
         if (part.fieldname === 'bannerData') {
@@ -79,33 +69,33 @@ export async function homeRoutes(app: FastifyInstance) {
       }
     }
 
-    // 2. ประกอบร่าง Banner (Merge รูปเก่า + รูปใหม่ตามลำดับ)
-    // bannerData จะส่งมาเป็น list ที่เรียงแล้ว โดยตัวที่เป็นรูปใหม่จะมี flag "isNewFile": true
+    // ประกอบร่าง Banner (Merge รูปเก่า + รูปใหม่ตามลำดับ)
     let newFileIndex = 0;
     
     const finalBanners = bannerData.map((item, index) => {
         let url = item.url;
         
-        // ถ้าเป็นรายการที่ระบุว่าเป็นไฟล์ใหม่ ให้ไปหยิบ URL จากที่เพิ่งอัปโหลดมาใส่
         if (item.isNewFile) {
-            url = uploadedBannerUrls[newFileIndex] || url; // กันเหนียว
+            url = uploadedBannerUrls[newFileIndex] || url;
             newFileIndex++;
         }
 
         return {
             id: item.id || randomUUID(),
             url: url,
+            title: item.title || '',
+            clickable: item.clickable || false,
+            linkUrl: item.linkUrl || '',
             active: item.active,
-            order: index + 1 // รันเลขลำดับใหม่ตามที่ส่งมา
+            order: index + 1
         };
     });
 
-    // 3. Update Database
+    // Update Database
     const existing = await db.select().from(homeContent).limit(1);
     
     const updateData = {
         banners: finalBanners,
-        headerText, subHeaderText, bodyText,
         showPopup,
         updatedAt: new Date()
     };
