@@ -34,7 +34,8 @@ export async function homeRoutes(app: FastifyInstance) {
     let showPopup = false;
     
     let bannerData: any[] = [];
-    let uploadedBannerUrls: string[] = [];
+    let uploadedBannerUrls: string[] = [];       // cropped images
+    let uploadedOriginalUrls: string[] = [];     // original uncropped images
     
     let popupUrl = '';
     let hasNewPopup = false;
@@ -45,7 +46,7 @@ export async function homeRoutes(app: FastifyInstance) {
         const filename = `home/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
         const fileBuffer = await streamToBuffer(part.file);
 
-        const { error } = await supabase.storage.from('uploads').upload(filename, fileBuffer, {
+        await supabase.storage.from('uploads').upload(filename, fileBuffer, {
            contentType: part.mimetype, upsert: true 
         });
 
@@ -56,6 +57,8 @@ export async function homeRoutes(app: FastifyInstance) {
           hasNewPopup = true;
         } else if (part.fieldname === 'bannerFiles') {
           uploadedBannerUrls.push(data.publicUrl);
+        } else if (part.fieldname === 'originalBannerFiles') {
+          uploadedOriginalUrls.push(data.publicUrl);
         }
 
       } else {
@@ -69,20 +72,28 @@ export async function homeRoutes(app: FastifyInstance) {
       }
     }
 
-    // ประกอบร่าง Banner (Merge รูปเก่า + รูปใหม่ตามลำดับ)
-    let newFileIndex = 0;
+    // ประกอบร่าง Banner
+    let newCroppedIndex = 0;
+    let newOriginalIndex = 0;
     
     const finalBanners = bannerData.map((item, index) => {
         let url = item.url;
+        let originalUrl = item.originalUrl || '';
         
         if (item.isNewFile) {
-            url = uploadedBannerUrls[newFileIndex] || url;
-            newFileIndex++;
+            url = uploadedBannerUrls[newCroppedIndex] || url;
+            newCroppedIndex++;
+        }
+
+        if (item.isNewOriginal) {
+            originalUrl = uploadedOriginalUrls[newOriginalIndex] || originalUrl;
+            newOriginalIndex++;
         }
 
         return {
             id: item.id || randomUUID(),
             url: url,
+            originalUrl: originalUrl,
             title: item.title || '',
             clickable: item.clickable || false,
             linkUrl: item.linkUrl || '',

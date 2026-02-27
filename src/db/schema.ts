@@ -37,6 +37,7 @@ export const rolePermissions = pgTable('role_permissions', {
 type BannerItem = {
   id: string;
   url: string;
+  originalUrl: string;
   title: string;
   clickable: boolean;
   linkUrl: string;
