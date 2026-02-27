@@ -44,7 +44,7 @@ export async function homeRoutes(app: FastifyInstance) {
   app.get('/home-content', async () => {
     const content = await db.select().from(homeContent).limit(1);
     if (content.length === 0) {
-      return { banners: [], popupImageUrl: "", showPopup: false };
+      return { banners: [], popups: [] };
     }
     return content[0];
   });
@@ -53,14 +53,11 @@ export async function homeRoutes(app: FastifyInstance) {
   app.post('/home-content', { preHandler: [verifyToken, requirePermission('manage_home')] }, async (req, reply) => {
     const parts = req.parts();
     
-    let showPopup = false;
-    
     let bannerData: any[] = [];
+    let popupData: any[] = [];
     let uploadedBannerUrls: string[] = [];
     let uploadedOriginalUrls: string[] = [];
-    
-    let popupUrl = '';
-    let hasNewPopup = false;
+    let uploadedPopupUrls: string[] = [];
 
     for await (const part of parts) {
       if (part.type === 'file') {
@@ -74,22 +71,20 @@ export async function homeRoutes(app: FastifyInstance) {
 
         const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
         
-        if (part.fieldname === 'popupImage') {
-          popupUrl = data.publicUrl;
-          hasNewPopup = true;
-        } else if (part.fieldname === 'bannerFiles') {
+        if (part.fieldname === 'bannerFiles') {
           uploadedBannerUrls.push(data.publicUrl);
         } else if (part.fieldname === 'originalBannerFiles') {
           uploadedOriginalUrls.push(data.publicUrl);
+        } else if (part.fieldname === 'popupFiles') {
+          uploadedPopupUrls.push(data.publicUrl);
         }
 
       } else {
-        if (part.fieldname === 'showPopup') showPopup = part.value === 'true';
-        
         if (part.fieldname === 'bannerData') {
-            try {
-                bannerData = JSON.parse(part.value as string);
-            } catch (e) { bannerData = [] }
+            try { bannerData = JSON.parse(part.value as string); } catch (e) { bannerData = [] }
+        }
+        if (part.fieldname === 'popupData') {
+            try { popupData = JSON.parse(part.value as string); } catch (e) { popupData = [] }
         }
       }
     }
@@ -97,8 +92,9 @@ export async function homeRoutes(app: FastifyInstance) {
     // ดึงข้อมูลเก่าจาก DB เพื่อเปรียบเทียบ
     const existing = await db.select().from(homeContent).limit(1);
     const oldBanners: any[] = (existing.length > 0 && existing[0].banners) ? existing[0].banners as any[] : [];
+    const oldPopups: any[] = (existing.length > 0 && existing[0].popups) ? existing[0].popups as any[] : [];
 
-    // ประกอบร่าง Banner ใหม่
+    // === ประกอบ Banners ===
     let newCroppedIndex = 0;
     let newOriginalIndex = 0;
     
@@ -110,7 +106,6 @@ export async function homeRoutes(app: FastifyInstance) {
             url = uploadedBannerUrls[newCroppedIndex] || url;
             newCroppedIndex++;
         }
-
         if (item.isNewOriginal) {
             originalUrl = uploadedOriginalUrls[newOriginalIndex] || originalUrl;
             newOriginalIndex++;
@@ -118,8 +113,7 @@ export async function homeRoutes(app: FastifyInstance) {
 
         return {
             id: item.id || randomUUID(),
-            url: url,
-            originalUrl: originalUrl,
+            url, originalUrl,
             title: item.title || '',
             clickable: item.clickable || false,
             linkUrl: item.linkUrl || '',
@@ -128,42 +122,53 @@ export async function homeRoutes(app: FastifyInstance) {
         };
     });
 
+    // === ประกอบ Popups ===
+    let newPopupIndex = 0;
+
+    const finalPopups = popupData.map((item, index) => {
+        let url = item.url;
+
+        if (item.isNewFile) {
+            url = uploadedPopupUrls[newPopupIndex] || url;
+            newPopupIndex++;
+        }
+
+        return {
+            id: item.id || randomUUID(),
+            url,
+            title: item.title || '',
+            active: item.active,
+            order: index + 1
+        };
+    });
+
     // === หารูปเก่าที่ไม่ใช้แล้ว → ลบจาก Storage ===
     const newUrls = new Set<string>();
-    finalBanners.forEach(b => {
-      if (b.url) newUrls.add(b.url);
-      if (b.originalUrl) newUrls.add(b.originalUrl);
-    });
+    finalBanners.forEach(b => { if (b.url) newUrls.add(b.url); if (b.originalUrl) newUrls.add(b.originalUrl); });
+    finalPopups.forEach(p => { if (p.url) newUrls.add(p.url); });
 
     const urlsToDelete: string[] = [];
     oldBanners.forEach((old: any) => {
       if (old.url && !newUrls.has(old.url)) urlsToDelete.push(old.url);
       if (old.originalUrl && !newUrls.has(old.originalUrl)) urlsToDelete.push(old.originalUrl);
     });
+    oldPopups.forEach((old: any) => {
+      if (old.url && !newUrls.has(old.url)) urlsToDelete.push(old.url);
+    });
 
-    // ลบ popup เก่าถ้ามีอันใหม่
-    if (hasNewPopup && existing.length > 0 && existing[0].popupImageUrl) {
-      urlsToDelete.push(existing[0].popupImageUrl);
-    }
+    if (urlsToDelete.length > 0) deleteOldFiles(urlsToDelete);
 
-    // ลบรูปเก่าแบบ async (ไม่ block response)
-    if (urlsToDelete.length > 0) {
-      deleteOldFiles(urlsToDelete);
-    }
-
-    // Update Database
+    // === Update Database ===
     const updateData = {
         banners: finalBanners,
-        showPopup,
+        popups: finalPopups,
         updatedAt: new Date()
     };
-
-    if (hasNewPopup) { (updateData as any).popupImageUrl = popupUrl; }
 
     if (existing.length > 0) {
       await db.update(homeContent).set(updateData).where(eq(homeContent.id, existing[0].id));
     } else {
-      await db.insert(homeContent).values({ ...updateData, popupImageUrl: popupUrl } as any);
+      await db.insert(homeContent).values(updateData as any);
     }
 
     return { success: true };

@@ -45,11 +45,18 @@ type BannerItem = {
   order: number;
 };
 
+type PopupItem = {
+  id: string;
+  url: string;
+  title: string;
+  active: boolean;
+  order: number;
+};
+
 export const homeContent = pgTable('home_content', {
   id: serial('id').primaryKey(),
   banners: json('banners').$type<BannerItem[]>().default([]),
-  popupImageUrl: text('popup_image_url'),
-  showPopup: boolean('show_popup').default(true),
+  popups: json('popups').$type<PopupItem[]>().default([]),
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
