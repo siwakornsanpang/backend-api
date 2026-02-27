@@ -16,6 +16,28 @@ async function streamToBuffer(stream: any): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+// แปลง Supabase public URL → storage path เพื่อลบได้
+function getStoragePath(publicUrl: string): string | null {
+  if (!publicUrl) return null;
+  const marker = '/storage/v1/object/public/uploads/';
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  return publicUrl.substring(idx + marker.length);
+}
+
+// ลบไฟล์เก่าจาก Supabase Storage
+async function deleteOldFiles(urls: string[]) {
+  const paths = urls.map(getStoragePath).filter((p): p is string => !!p);
+  if (paths.length === 0) return;
+
+  try {
+    await supabase.storage.from('uploads').remove(paths);
+    console.log(`[cleanup] ลบรูปเก่า ${paths.length} ไฟล์:`, paths);
+  } catch (e) {
+    console.error('[cleanup] ลบรูปเก่าล้มเหลว:', e);
+  }
+}
+
 export async function homeRoutes(app: FastifyInstance) {
   
   // GET: ดึงข้อมูลหน้าแรก
@@ -34,8 +56,8 @@ export async function homeRoutes(app: FastifyInstance) {
     let showPopup = false;
     
     let bannerData: any[] = [];
-    let uploadedBannerUrls: string[] = [];       // cropped images
-    let uploadedOriginalUrls: string[] = [];     // original uncropped images
+    let uploadedBannerUrls: string[] = [];
+    let uploadedOriginalUrls: string[] = [];
     
     let popupUrl = '';
     let hasNewPopup = false;
@@ -72,7 +94,11 @@ export async function homeRoutes(app: FastifyInstance) {
       }
     }
 
-    // ประกอบร่าง Banner
+    // ดึงข้อมูลเก่าจาก DB เพื่อเปรียบเทียบ
+    const existing = await db.select().from(homeContent).limit(1);
+    const oldBanners: any[] = (existing.length > 0 && existing[0].banners) ? existing[0].banners as any[] : [];
+
+    // ประกอบร่าง Banner ใหม่
     let newCroppedIndex = 0;
     let newOriginalIndex = 0;
     
@@ -102,9 +128,30 @@ export async function homeRoutes(app: FastifyInstance) {
         };
     });
 
+    // === หารูปเก่าที่ไม่ใช้แล้ว → ลบจาก Storage ===
+    const newUrls = new Set<string>();
+    finalBanners.forEach(b => {
+      if (b.url) newUrls.add(b.url);
+      if (b.originalUrl) newUrls.add(b.originalUrl);
+    });
+
+    const urlsToDelete: string[] = [];
+    oldBanners.forEach((old: any) => {
+      if (old.url && !newUrls.has(old.url)) urlsToDelete.push(old.url);
+      if (old.originalUrl && !newUrls.has(old.originalUrl)) urlsToDelete.push(old.originalUrl);
+    });
+
+    // ลบ popup เก่าถ้ามีอันใหม่
+    if (hasNewPopup && existing.length > 0 && existing[0].popupImageUrl) {
+      urlsToDelete.push(existing[0].popupImageUrl);
+    }
+
+    // ลบรูปเก่าแบบ async (ไม่ block response)
+    if (urlsToDelete.length > 0) {
+      deleteOldFiles(urlsToDelete);
+    }
+
     // Update Database
-    const existing = await db.select().from(homeContent).limit(1);
-    
     const updateData = {
         banners: finalBanners,
         showPopup,
