@@ -83,6 +83,7 @@ export const laws = pgTable('laws', {
 
 export const councilMembers = pgTable('council_members', {
   id: serial('id').primaryKey(),
+  prefix: text('prefix'), // คำนำหน้าชื่อ
   name: text('name').notNull(),
   position: text('position').notNull(),
   type: text('type').notNull(),

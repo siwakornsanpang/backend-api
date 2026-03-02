@@ -18,7 +18,7 @@ export async function councilRoutes(app: FastifyInstance) {
   // 2. POST: สร้างข้อมูลใหม่
   app.post('/council', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
     const parts = req.parts();
-    let name = '', position = '', type = 'elected', order = 99, imageUrl = '', originalImageUrl = '', background = '';
+    let prefix = '', name = '', position = '', type = 'elected', order = 99, imageUrl = '', originalImageUrl = '', background = '';
 
     for await (const part of parts) {
       if (part.type === 'file') {
@@ -32,6 +32,7 @@ export async function councilRoutes(app: FastifyInstance) {
           }
         }
       } else {
+        if (part.fieldname === 'prefix') prefix = part.value as string;
         if (part.fieldname === 'name') name = part.value as string;
         if (part.fieldname === 'position') position = part.value as string;
         if (part.fieldname === 'type') type = part.value as string;
@@ -41,6 +42,7 @@ export async function councilRoutes(app: FastifyInstance) {
     }
 
     await db.insert(councilMembers).values({
+      prefix: prefix || null,
       name, position, type, order, background,
       imageUrl: imageUrl || null,
       originalImageUrl: originalImageUrl || null,
@@ -56,7 +58,7 @@ export async function councilRoutes(app: FastifyInstance) {
     const oldData = await db.select().from(councilMembers).where(eq(councilMembers.id, parseInt(id))).limit(1);
     if (!oldData.length) return reply.status(404).send({ message: 'Not found' });
 
-    let name, position, type, order, imageUrl, originalImageUrl, background;
+    let prefix, name, position, type, order, imageUrl, originalImageUrl, background;
 
     for await (const part of parts) {
       if (part.type === 'file') {
@@ -70,6 +72,7 @@ export async function councilRoutes(app: FastifyInstance) {
           }
         }
       } else {
+        if (part.fieldname === 'prefix') prefix = part.value as string;
         if (part.fieldname === 'name') name = part.value as string;
         if (part.fieldname === 'position') position = part.value as string;
         if (part.fieldname === 'type') type = part.value as string;
@@ -85,6 +88,7 @@ export async function councilRoutes(app: FastifyInstance) {
     if (urlsToDelete.length > 0) deleteFromStorage(urlsToDelete);
 
     await db.update(councilMembers).set({
+      prefix: prefix !== undefined ? prefix : oldData[0].prefix,
       name: name || oldData[0].name,
       position: position || oldData[0].position,
       type: type || oldData[0].type,
