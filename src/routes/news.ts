@@ -61,13 +61,14 @@ export async function newsRoutes(app: FastifyInstance) {
 
   // POST: สร้างข่าว (JSON Body)
   app.post('/news', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
-    const { title, content, category, status, publishedAt, isHighlight } = req.body as any; // ดึง isHighlight ออกมา
+    const { title, content, category, status, publishedAt, isHighlight, thumbnailUrl } = req.body as any; // เพิ่ม thumbnailUrl
     if (!title || !content) {
       return reply.status(400).send({ message: 'Title and content are required' });
     }
     const result = await db.insert(news).values({
       title,
       content,
+      thumbnailUrl, // บันทึก thumbnailUrl
       category: category || 'news',
       status: status || 'draft',
       publishedAt: publishedAt ? new Date(publishedAt) : (status === 'published' ? new Date() : null),
@@ -80,7 +81,7 @@ export async function newsRoutes(app: FastifyInstance) {
   app.put('/news/:id', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const { title, content, category, status, publishedAt, isHighlight } = req.body as any; // ดึง isHighlight ออกมา
+      const { title, content, category, status, publishedAt, isHighlight, thumbnailUrl } = req.body as any; // เพิ่ม thumbnailUrl
       const existing = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
       if (existing.length === 0) return reply.status(404).send({ message: 'Not found' });
 
@@ -88,17 +89,25 @@ export async function newsRoutes(app: FastifyInstance) {
       const oldImages = extractImageUrls(existing[0].content || '');
       const newImages = extractImageUrls(content || '');
       const deletedImages = oldImages.filter(url => !newImages.includes(url));
+
+      // ลบรูป Thumbnail เก่าถ้ามีการเปลี่ยนรูป
+      if (existing[0].thumbnailUrl && existing[0].thumbnailUrl !== thumbnailUrl) {
+        deletedImages.push(existing[0].thumbnailUrl);
+      }
+
       if (deletedImages.length > 0) {
         const filePaths = deletedImages
           .map(url => getFilePathFromUrl(url))
           .filter((p): p is string => !!p);
         if (filePaths.length > 0) {
+          // ใช้ 'uploads' bucket หรือ News bucket ตามที่ตั้งไว้ใน getFilePathFromUrl
           await supabase.storage.from('uploads').remove(filePaths);
+          await supabase.storage.from('news').remove(filePaths); // เผื่อกรณีใช้ bucket news-content
         }
       }
 
       const updateData: any = {
-        title, content, category, status,
+        title, content, category, status, thumbnailUrl, // อัปเดต thumbnailUrl
         isHighlight: isHighlight ?? existing[0].isHighlight, // อัปเดตค่า highlight
         updatedAt: new Date(),
         publishedAt: publishedAt ? new Date(publishedAt) : existing[0].publishedAt,
@@ -125,12 +134,17 @@ export async function newsRoutes(app: FastifyInstance) {
 
       if (existing.length > 0) {
         const images = extractImageUrls(existing[0].content || '');
+        if (existing[0].thumbnailUrl) {
+          images.push(existing[0].thumbnailUrl); // เพิ่มรูปหน้าปกเข้าไปในรายการที่จะลบ
+        }
+
         if (images.length > 0) {
           const filePaths = images
             .map(url => getFilePathFromUrl(url))
             .filter((p): p is string => !!p);
           if (filePaths.length > 0) {
             await supabase.storage.from('uploads').remove(filePaths);
+            await supabase.storage.from('news').remove(filePaths);
           }
         }
       }
