@@ -123,11 +123,14 @@ export const news = pgTable('news', {
 export const councilHistory = pgTable('council_history', {
   id: serial('id').primaryKey(),
   term: text('term').notNull(),           // 1. วาระ (เช่น "13")
-  years: text('years').notNull(),         // 2. ปีที่ดำรงตำแหน่ง (เช่น "2568-2570")
+  startYear: text('start_year').notNull().default(''), // 2.1 ปีเริ่มวาระ
+  endYear: text('end_year').notNull().default(''),     // 2.2 ปีสิ้นสุดวาระ
   presidentName: text('president_name').notNull(), // 3. ชื่อนายก
   secretaryName: text('secretary_name').notNull(), // 4. ชื่อเลขา
-  presidentImage: text('president_image'),         // 5. รูปนายก
-  secretaryImage: text('secretary_image'),         // 6. รูปเลขา
+  presidentImage: text('president_image'),         // 5. รูปนายก (cropped)
+  originalPresidentImage: text('original_president_image'), // รูปนายกต้นฉบับ
+  secretaryImage: text('secretary_image'),         // 6. รูปเลขา (cropped)
+  originalSecretaryImage: text('original_secretary_image'), // รูปเลขาต้นฉบับ
   createdAt: timestamp('created_at').defaultNow(),
 });
 
