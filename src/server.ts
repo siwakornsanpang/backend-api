@@ -19,7 +19,11 @@ import { permissionRoutes } from "./routes/permissions";
 import { webSettingRoutes } from "./routes/setting";
 import { honorRoutes } from "./routes/honor";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true,
+  bodyLimit: 100 * 1024 * 1024,   // 100MB (รองรับวิดีโอขนาดใหญ่)
+  requestTimeout: 5 * 60 * 1000,  // 5 นาที (รองรับอัปโหลดไฟล์ใหญ่)
+});
 
 // --- 1. Plugins (ของกลาง) ---
 
