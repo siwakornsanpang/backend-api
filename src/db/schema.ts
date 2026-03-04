@@ -138,13 +138,16 @@ export const councilHistory = pgTable('council_history', {
 
 export const agencies = pgTable('agencies', {
   id: serial('id').primaryKey(),
-  category: text('category').notNull(),      // 'secretary', 'royal_college', 'supervised'
+  order: integer('order').notNull().default(0),
   name: text('name').notNull(),              // ชื่อหน่วยงาน
-  description: text('description'),          // 🔥 เพิ่ม: คำอธิบายสั้นๆ
-  imageUrl: text('image_url'),               // 🔥 เพิ่ม: Logo หน่วยงาน
+  title: text('title'),                      // ชื่อ title
+  description: text('description'),          // คำอธิบายหน่วยงาน
+  thumbnailUrl: text('thumbnail_url'),       // Thumbnail (cropped 1:1)
+  originalThumbnailUrl: text('original_thumbnail_url'), // ต้นฉบับสำหรับ re-crop
+  logoUrl: text('logo_url'),                 // Logo (ไม่ครอป)
+  iconUrl: text('icon_url'),                 // Icon (ไม่ครอป)
   url: text('url').notNull(),                // ลิงก์เว็บไซต์
-  status: text('status').default('online'),
-  order: integer('order').default(0),
+  category: text('category').notNull(),      // ประเภทหน่วยงาน
   createdAt: timestamp('created_at').defaultNow(),
 });
 
