@@ -4,7 +4,7 @@ import { db } from '../db';
 import { honors } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { verifyToken, requirePermission } from '../utils/authGuard';
-import { streamToBuffer, uploadToStorage, deleteFromStorage } from '../utils/upload';
+import { streamToBuffer, uploadToStorage, uploadToStorageResumable, deleteFromStorage } from '../utils/upload';
 
 export async function honorRoutes(app: FastifyInstance) {
 
@@ -25,8 +25,14 @@ export async function honorRoutes(app: FastifyInstance) {
       if (part.type === 'file') {
         const buffer = await streamToBuffer(part.file);
         if (part.fieldname === 'video') {
-          const url = await uploadToStorage('honor', buffer, part.filename, part.mimetype, 'video');
-          if (url) videoUrl = url;
+          // ใช้ Resumable Upload (TUS) สำหรับวิดีโอ
+          try {
+            const url = await uploadToStorageResumable('honor', buffer, part.filename, part.mimetype, 'video');
+            if (url) videoUrl = url;
+          } catch (err) {
+            console.error('❌ Video upload failed:', err);
+            return reply.status(500).send({ message: 'Video upload failed' });
+          }
         } else if (part.fieldname === 'originalImage') {
           const url = await uploadToStorage('honor', buffer, part.filename, part.mimetype, 'originalImage');
           if (url) originalImageUrl = url;
@@ -74,8 +80,14 @@ export async function honorRoutes(app: FastifyInstance) {
       if (part.type === 'file') {
         const buffer = await streamToBuffer(part.file);
         if (part.fieldname === 'video') {
-          const url = await uploadToStorage('honor', buffer, part.filename, part.mimetype, 'video');
-          if (url) videoUrl = url;
+          // ใช้ Resumable Upload (TUS) สำหรับวิดีโอ
+          try {
+            const url = await uploadToStorageResumable('honor', buffer, part.filename, part.mimetype, 'video');
+            if (url) videoUrl = url;
+          } catch (err) {
+            console.error('❌ Video upload failed:', err);
+            return reply.status(500).send({ message: 'Video upload failed' });
+          }
         } else if (part.fieldname === 'originalImage') {
           const url = await uploadToStorage('honor', buffer, part.filename, part.mimetype, 'originalImage');
           if (url) originalImageUrl = url;
