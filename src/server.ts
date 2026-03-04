@@ -17,6 +17,7 @@ import { agencyRoutes } from "./routes/agencies";
 import { authRoutes } from "./routes/auth";
 import { permissionRoutes } from "./routes/permissions";
 import { webSettingRoutes } from "./routes/setting";
+import { honorRoutes } from "./routes/honor";
 
 const app = Fastify({ logger: true });
 
@@ -65,6 +66,7 @@ app.register(newsRoutes);         // ✅ ข่าวสาร
 app.register(historyRoutes);      // ✅ ทำเนียบสภา
 app.register(agencyRoutes);       // ✅ หน่วยงาน
 app.register(webSettingRoutes);    // ✅ ตั้งค่าเว็บไซต์
+app.register(honorRoutes);         // ✅ เกียรติประวัติ
 
 // --- 3. Start Server ---
 const start = async () => {

@@ -174,3 +174,18 @@ export const webSettings = pgTable('web_settings', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// 🏆 ตารางเกียรติประวัติ
+export const honors = pgTable('honors', {
+  id: serial('id').primaryKey(),
+  order: integer('order').notNull().default(0),
+  prefix: text('prefix'),                    // คำนำหน้าชื่อ
+  name: text('name').notNull(),              // ชื่อ-นามสกุล
+  awardName: text('award_name').notNull(),   // ชื่อรางวัล
+  workName: text('work_name'),              // ชื่อผลงาน
+  awardDetail: text('award_detail'),         // รายละเอียดรางวัล (text ยาว)
+  imageUrl: text('image_url'),               // รูปเภสัช (cropped 4:3)
+  originalImageUrl: text('original_image_url'), // รูปต้นฉบับ
+  videoUrl: text('video_url'),               // วิดีโอ
+  createdAt: timestamp('created_at').defaultNow(),
+});
