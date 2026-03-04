@@ -86,4 +86,15 @@ export async function lawRoutes(app: FastifyInstance) {
     await db.delete(laws).where(eq(laws.id, parseInt(id)));
     return { success: true };
   });
+
+  // 5. PUT Reorder: bulk update order values
+  app.put('/laws/reorder', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
+    const { items } = req.body as { items: { id: number; order: number }[] };
+    if (!Array.isArray(items)) return reply.status(400).send({ message: 'Invalid items' });
+
+    for (const item of items) {
+      await db.update(laws).set({ order: item.order }).where(eq(laws.id, item.id));
+    }
+    return { success: true };
+  });
 }
