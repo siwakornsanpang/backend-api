@@ -68,6 +68,7 @@ export async function honorRoutes(app: FastifyInstance) {
 
     let prefix, name, awardName, workName, awardDetail, order;
     let imageUrl: string | undefined, originalImageUrl: string | undefined, videoUrl: string | undefined;
+    let removeVideo = false;
 
     for await (const part of parts) {
       if (part.type === 'file') {
@@ -89,6 +90,7 @@ export async function honorRoutes(app: FastifyInstance) {
         if (part.fieldname === 'workName') workName = part.value as string;
         if (part.fieldname === 'awardDetail') awardDetail = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
+        if (part.fieldname === 'removeVideo' && part.value === 'true') removeVideo = true;
       }
     }
 
@@ -97,6 +99,7 @@ export async function honorRoutes(app: FastifyInstance) {
     if (imageUrl && oldData[0].imageUrl) urlsToDelete.push(oldData[0].imageUrl);
     if (originalImageUrl && oldData[0].originalImageUrl) urlsToDelete.push(oldData[0].originalImageUrl);
     if (videoUrl && oldData[0].videoUrl) urlsToDelete.push(oldData[0].videoUrl);
+    if (removeVideo && oldData[0].videoUrl) urlsToDelete.push(oldData[0].videoUrl);
     if (urlsToDelete.length > 0) deleteFromStorage(urlsToDelete);
 
     await db.update(honors).set({
@@ -108,7 +111,7 @@ export async function honorRoutes(app: FastifyInstance) {
       order: order !== undefined ? order : oldData[0].order,
       imageUrl: imageUrl || oldData[0].imageUrl,
       originalImageUrl: originalImageUrl !== undefined ? (originalImageUrl || oldData[0].originalImageUrl) : oldData[0].originalImageUrl,
-      videoUrl: videoUrl || oldData[0].videoUrl,
+      videoUrl: removeVideo ? null : (videoUrl || oldData[0].videoUrl),
     }).where(eq(honors.id, parseInt(id)));
 
     return { success: true };

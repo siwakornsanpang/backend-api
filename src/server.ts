@@ -52,7 +52,7 @@ app.register(cors, {
 
 // Multipart (สำหรับ upload ไฟล์)
 app.register(multipart, {
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB (รองรับวิดีโอยาวๆ)
 });
 
 // --- 2. Register Routes ---
