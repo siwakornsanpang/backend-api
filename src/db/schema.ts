@@ -64,6 +64,7 @@ export const laws = pgTable('laws', {
   id: serial('id').primaryKey(),
   category: text('category').notNull(), // เก็บหมวดหมู่ (เช่น law1, law2)
   title: text('title').notNull(),       // ชื่อกฎหมาย
+  year: integer('year'),                // ปี พ.ศ.
   announcedAt: date('announced_at'),    // วันที่ประกาศ
   order: integer('order').default(0),   // ลำดับการแสดงผล
   pdfUrl: text('pdf_url'),              // ลิงก์ไฟล์ PDF
