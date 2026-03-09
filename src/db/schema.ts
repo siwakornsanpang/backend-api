@@ -64,6 +64,7 @@ export const laws = pgTable('laws', {
   id: serial('id').primaryKey(),
   category: text('category').notNull(), // เก็บหมวดหมู่ (เช่น law1, law2)
   title: text('title').notNull(),       // ชื่อกฎหมาย
+  year: integer('year'),                // ปี พ.ศ.
   announcedAt: date('announced_at'),    // วันที่ประกาศ
   order: integer('order').default(0),   // ลำดับการแสดงผล
   pdfUrl: text('pdf_url'),              // ลิงก์ไฟล์ PDF
@@ -138,13 +139,16 @@ export const councilHistory = pgTable('council_history', {
 
 export const agencies = pgTable('agencies', {
   id: serial('id').primaryKey(),
-  category: text('category').notNull(),      // 'secretary', 'royal_college', 'supervised'
+  order: integer('order').notNull().default(0),
   name: text('name').notNull(),              // ชื่อหน่วยงาน
-  description: text('description'),          // 🔥 เพิ่ม: คำอธิบายสั้นๆ
-  imageUrl: text('image_url'),               // 🔥 เพิ่ม: Logo หน่วยงาน
+  title: text('title'),                      // ชื่อ title
+  description: text('description'),          // คำอธิบายหน่วยงาน
+  thumbnailUrl: text('thumbnail_url'),       // Thumbnail (cropped 1:1)
+  originalThumbnailUrl: text('original_thumbnail_url'), // ต้นฉบับสำหรับ re-crop
+  logoUrl: text('logo_url'),                 // Logo (ไม่ครอป)
+  iconUrl: text('icon_url'),                 // Icon (ไม่ครอป)
   url: text('url').notNull(),                // ลิงก์เว็บไซต์
-  status: text('status').default('online'),
-  order: integer('order').default(0),
+  category: text('category').notNull(),      // ประเภทหน่วยงาน
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -173,4 +177,19 @@ export const webSettings = pgTable('web_settings', {
   // ข้อมูลอื่นๆ
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// 🏆 ตารางเกียรติประวัติ
+export const honors = pgTable('honors', {
+  id: serial('id').primaryKey(),
+  order: integer('order').notNull().default(0),
+  prefix: text('prefix'),                    // คำนำหน้าชื่อ
+  name: text('name').notNull(),              // ชื่อ-นามสกุล
+  awardName: text('award_name').notNull(),   // ชื่อรางวัล
+  workName: text('work_name'),              // ชื่อผลงาน
+  awardDetail: text('award_detail'),         // รายละเอียดรางวัล (text ยาว)
+  imageUrl: text('image_url'),               // รูปเภสัช (cropped 4:3)
+  originalImageUrl: text('original_image_url'), // รูปต้นฉบับ
+  videoUrl: text('video_url'),               // วิดีโอ
+  createdAt: timestamp('created_at').defaultNow(),
 });

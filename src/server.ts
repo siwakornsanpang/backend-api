@@ -17,8 +17,13 @@ import { agencyRoutes } from "./routes/agencies";
 import { authRoutes } from "./routes/auth";
 import { permissionRoutes } from "./routes/permissions";
 import { webSettingRoutes } from "./routes/setting";
+import { honorRoutes } from "./routes/honor";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true,
+  bodyLimit: 100 * 1024 * 1024,   // 100MB (รองรับวิดีโอขนาดใหญ่)
+  requestTimeout: 5 * 60 * 1000,  // 5 นาที (รองรับอัปโหลดไฟล์ใหญ่)
+});
 
 // --- 1. Plugins (ของกลาง) ---
 
@@ -51,7 +56,7 @@ app.register(cors, {
 
 // Multipart (สำหรับ upload ไฟล์)
 app.register(multipart, {
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB (รองรับวิดีโอยาวๆ)
 });
 
 // --- 2. Register Routes ---
@@ -65,6 +70,7 @@ app.register(newsRoutes);         // ✅ ข่าวสาร
 app.register(historyRoutes);      // ✅ ทำเนียบสภา
 app.register(agencyRoutes);       // ✅ หน่วยงาน
 app.register(webSettingRoutes);    // ✅ ตั้งค่าเว็บไซต์
+app.register(honorRoutes);         // ✅ เกียรติประวัติ
 
 // --- 3. Start Server ---
 const start = async () => {

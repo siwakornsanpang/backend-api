@@ -101,7 +101,24 @@ export async function councilRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
-  // 4. DELETE: ลบ + ลบรูปเก่า
+  // 4. PUT: อัปเดตลำดับ (Reorder)
+  app.put('/council/reorder', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+    const items = req.body as { id: number; order: number }[];
+    if (!Array.isArray(items)) {
+      return reply.status(400).send({ message: 'Invalid format' });
+    }
+
+    // Update each item
+    for (const item of items) {
+      await db.update(councilMembers)
+        .set({ order: item.order })
+        .where(eq(councilMembers.id, item.id));
+    }
+
+    return { success: true };
+  });
+
+  // 5. DELETE: ลบ + ลบรูปเก่า
   app.delete('/council/:id', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const memberId = parseInt(id);

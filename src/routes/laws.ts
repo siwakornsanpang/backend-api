@@ -20,6 +20,7 @@ export async function lawRoutes(app: FastifyInstance) {
   app.post('/laws', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
     const parts = req.parts();
     let title = '', category = '', announcedAt = '', order = 0, pdfUrl = '', status = 'online';
+    let year: number | null = null;
 
     for await (const part of parts) {
       if (part.type === 'file') {
@@ -32,10 +33,11 @@ export async function lawRoutes(app: FastifyInstance) {
         if (part.fieldname === 'announcedAt') announcedAt = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string) || 0;
         if (part.fieldname === 'status') status = part.value as string;
+        if (part.fieldname === 'year') year = parseInt(part.value as string) || null;
       }
     }
 
-    await db.insert(laws).values({ title, category, announcedAt, order, pdfUrl, status });
+    await db.insert(laws).values({ title, category, announcedAt, order, pdfUrl, status, year });
     return { success: true };
   });
 
@@ -45,6 +47,7 @@ export async function lawRoutes(app: FastifyInstance) {
     const parts = req.parts();
 
     let title, announcedAt, order, status, pdfUrl;
+    let year: number | undefined;
     let hasNewFile = false;
 
     const existing = await db.select().from(laws).where(eq(laws.id, parseInt(id))).limit(1);
@@ -61,6 +64,7 @@ export async function lawRoutes(app: FastifyInstance) {
         if (part.fieldname === 'announcedAt') announcedAt = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
         if (part.fieldname === 'status') status = part.value as string;
+        if (part.fieldname === 'year') year = parseInt(part.value as string) || undefined;
       }
     }
 
@@ -69,6 +73,7 @@ export async function lawRoutes(app: FastifyInstance) {
       announcedAt: announcedAt !== undefined ? (announcedAt === '' ? null : announcedAt) : existing[0].announcedAt,
       order: order !== undefined ? (isNaN(order) ? 0 : order) : existing[0].order,
       status: status !== undefined ? status : existing[0].status,
+      year: year !== undefined ? year : existing[0].year,
       ...(hasNewFile ? { pdfUrl } : {}),
     }).where(eq(laws.id, parseInt(id)));
 
@@ -79,6 +84,17 @@ export async function lawRoutes(app: FastifyInstance) {
   app.delete('/laws/:id', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     await db.delete(laws).where(eq(laws.id, parseInt(id)));
+    return { success: true };
+  });
+
+  // 5. PUT Reorder: bulk update order values
+  app.put('/laws/reorder', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
+    const { items } = req.body as { items: { id: number; order: number }[] };
+    if (!Array.isArray(items)) return reply.status(400).send({ message: 'Invalid items' });
+
+    for (const item of items) {
+      await db.update(laws).set({ order: item.order }).where(eq(laws.id, item.id));
+    }
     return { success: true };
   });
 }
