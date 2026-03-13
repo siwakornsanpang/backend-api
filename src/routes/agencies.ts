@@ -70,9 +70,10 @@ export async function agencyRoutes(app: FastifyInstance) {
     const oldData = await db.select().from(agencies).where(eq(agencies.id, parseInt(id))).limit(1);
     if (!oldData.length) return reply.status(404).send({ message: 'Not found' });
 
-    let name, title, description, url, category, order;
+    let name, title, description, url: string | undefined, category, order;
     let thumbnailUrl: string | undefined, originalThumbnailUrl: string | undefined;
     let logoUrl: string | undefined, iconUrl: string | undefined;
+    let removeThumbnail = false, removeLogo = false, removeIcon = false;
 
     for await (const part of parts) {
       if (part.type === 'file') {
@@ -97,28 +98,48 @@ export async function agencyRoutes(app: FastifyInstance) {
         if (part.fieldname === 'url') url = part.value as string;
         if (part.fieldname === 'category') category = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
+        if (part.fieldname === 'removeThumbnail' && part.value === 'true') removeThumbnail = true;
+        if (part.fieldname === 'removeLogo' && part.value === 'true') removeLogo = true;
+        if (part.fieldname === 'removeIcon' && part.value === 'true') removeIcon = true;
       }
     }
 
-    // ลบรูปเก่าถ้ามีรูปใหม่
+    // ลบรูปเก่าถ้ามีรูปใหม่ หรือถ้าสั่งลบ
     const urlsToDelete: string[] = [];
     if (thumbnailUrl && oldData[0].thumbnailUrl) urlsToDelete.push(oldData[0].thumbnailUrl);
     if (originalThumbnailUrl && oldData[0].originalThumbnailUrl) urlsToDelete.push(oldData[0].originalThumbnailUrl);
     if (logoUrl && oldData[0].logoUrl) urlsToDelete.push(oldData[0].logoUrl);
     if (iconUrl && oldData[0].iconUrl) urlsToDelete.push(oldData[0].iconUrl);
+    // ลบรูปที่ user สั่งลบ
+    if (removeThumbnail) {
+      if (oldData[0].thumbnailUrl) urlsToDelete.push(oldData[0].thumbnailUrl);
+      if (oldData[0].originalThumbnailUrl) urlsToDelete.push(oldData[0].originalThumbnailUrl);
+    }
+    if (removeLogo && oldData[0].logoUrl) urlsToDelete.push(oldData[0].logoUrl);
+    if (removeIcon && oldData[0].iconUrl) urlsToDelete.push(oldData[0].iconUrl);
     if (urlsToDelete.length > 0) deleteFromStorage(urlsToDelete);
+
+    // Determine final values
+    let finalThumbnailUrl = thumbnailUrl || oldData[0].thumbnailUrl;
+    let finalOriginalThumbnailUrl = originalThumbnailUrl !== undefined ? (originalThumbnailUrl || oldData[0].originalThumbnailUrl) : oldData[0].originalThumbnailUrl;
+    let finalLogoUrl = logoUrl || oldData[0].logoUrl;
+    let finalIconUrl = iconUrl || oldData[0].iconUrl;
+
+    if (removeThumbnail) { finalThumbnailUrl = null; finalOriginalThumbnailUrl = null; }
+    if (removeLogo) finalLogoUrl = null;
+    if (removeIcon) finalIconUrl = null;
 
     await db.update(agencies).set({
       name: name || oldData[0].name,
       title: title !== undefined ? title : oldData[0].title,
       description: description !== undefined ? description : oldData[0].description,
-      url: url || oldData[0].url,
+      url: url !== undefined ? url : oldData[0].url,
       category: category || oldData[0].category,
       order: order !== undefined ? order : oldData[0].order,
-      thumbnailUrl: thumbnailUrl || oldData[0].thumbnailUrl,
-      originalThumbnailUrl: originalThumbnailUrl !== undefined ? (originalThumbnailUrl || oldData[0].originalThumbnailUrl) : oldData[0].originalThumbnailUrl,
-      logoUrl: logoUrl || oldData[0].logoUrl,
-      iconUrl: iconUrl || oldData[0].iconUrl,
+      thumbnailUrl: finalThumbnailUrl,
+      originalThumbnailUrl: finalOriginalThumbnailUrl,
+      logoUrl: finalLogoUrl,
+      iconUrl: finalIconUrl,
     }).where(eq(agencies.id, parseInt(id)));
 
     return { success: true };
