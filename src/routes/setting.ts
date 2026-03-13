@@ -5,7 +5,7 @@ import { webSettings } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { supabase } from '../utils/supabase';
 import path from 'path';
-import { verifyToken, requireRole } from '../utils/authGuard';
+import { verifyToken, requirePermission } from '../utils/authGuard';
 
 async function streamToBuffer(stream: any): Promise<Buffer> {
     const chunks = [];
@@ -44,7 +44,7 @@ export async function webSettingRoutes(app: FastifyInstance) {
     });
 
     // POST: อัปเดตข้อมูลการตั้งค่าเว็บไซต์ 
-    app.post('/web-settings', { preHandler: [verifyToken, requireRole('manage_web_settings')] }, async (req, reply) => {
+    app.post('/web-settings', { preHandler: [verifyToken, requirePermission('manage_web_settings')] }, async (req, reply) => {
         const parts = req.parts();
 
         let updateData: any = {
@@ -81,6 +81,9 @@ export async function webSettingRoutes(app: FastifyInstance) {
                 // จัดการข้อมูล Text Fields
                 const fieldName = part.fieldname;
                 const fieldValue = part.value as string;
+
+                // ข้ามฟิลด์ที่ไม่ต้องการให้อัปเดตโดยตรงจาก frontend
+                if (['id', 'createdAt', 'updatedAt'].includes(fieldName)) continue;
 
                 // Map field name จาก frontend (camelCase) เป็น DB (camelCase ใน schema)
                 // หรือตามที่ schema กำหนดไว้

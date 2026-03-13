@@ -113,6 +113,8 @@ export const news = pgTable('news', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),               // หัวข้อข่าว
   content: text('content').notNull(),           // เนื้อหาข่าว
+  excerpt: text('excerpt'),                     // เนื้อหาข่าวโดยย่อ
+
   thumbnailUrl: text('thumbnail_url'),          // รูปหน้าปก (Thumbnail)
   status: newsStatusEnum('status').default('draft').notNull(),
   category: newsCategoryEnum('category').notNull(), // หมวดหมู่ข่าว
