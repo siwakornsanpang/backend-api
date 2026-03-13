@@ -4,7 +4,7 @@ import { db } from '../db';
 import { laws } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { verifyToken, requirePermission } from '../utils/authGuard';
-import { streamToBuffer, uploadToStorage } from '../utils/upload';
+import { streamToBuffer, uploadToStorage, deleteFromStorage } from '../utils/upload';
 
 export async function lawRoutes(app: FastifyInstance) {
 
@@ -49,6 +49,7 @@ export async function lawRoutes(app: FastifyInstance) {
     let title, announcedAt, order, status, pdfUrl;
     let year: number | undefined;
     let hasNewFile = false;
+    let removePdf = false;
 
     const existing = await db.select().from(laws).where(eq(laws.id, parseInt(id))).limit(1);
     if (existing.length === 0) return reply.status(404).send({ message: 'Not found' });
@@ -65,8 +66,20 @@ export async function lawRoutes(app: FastifyInstance) {
         if (part.fieldname === 'order') order = parseInt(part.value as string);
         if (part.fieldname === 'status') status = part.value as string;
         if (part.fieldname === 'year') year = parseInt(part.value as string) || undefined;
+        if (part.fieldname === 'removePdf' && part.value === 'true') removePdf = true;
       }
     }
+
+    // Delete old PDF if replacing or removing
+    const urlsToDelete: string[] = [];
+    if (hasNewFile && existing[0].pdfUrl) urlsToDelete.push(existing[0].pdfUrl);
+    if (removePdf && existing[0].pdfUrl) urlsToDelete.push(existing[0].pdfUrl);
+    if (urlsToDelete.length > 0) deleteFromStorage(urlsToDelete).catch(e => console.error("Error deleting old PDF:", e));
+
+    // Determine final pdfUrl
+    let finalPdfUrl = existing[0].pdfUrl;
+    if (hasNewFile) finalPdfUrl = pdfUrl || null;
+    if (removePdf && !hasNewFile) finalPdfUrl = null;
 
     await db.update(laws).set({
       title: title !== undefined ? title : existing[0].title,
@@ -74,11 +87,12 @@ export async function lawRoutes(app: FastifyInstance) {
       order: order !== undefined ? (isNaN(order) ? 0 : order) : existing[0].order,
       status: status !== undefined ? status : existing[0].status,
       year: year !== undefined ? year : existing[0].year,
-      ...(hasNewFile ? { pdfUrl } : {}),
+      pdfUrl: finalPdfUrl,
     }).where(eq(laws.id, parseInt(id)));
 
     return { success: true };
   });
+
 
   // 4. DELETE
   app.delete('/laws/:id', { preHandler: [verifyToken, requirePermission('manage_law')] }, async (req, reply) => {
