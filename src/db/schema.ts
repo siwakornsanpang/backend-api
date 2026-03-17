@@ -124,6 +124,18 @@ export const news = pgTable('news', {
   isHighlight: boolean('is_highlight').default(false), // ข่าวเด่น
 });
 
+// ตารางความรู้เรื่องยา (medicine knowledge)
+export const medicineArticles = pgTable('medicine_articles', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),               // หัวข้อบทความ
+  content: text('content').notNull(),           // เนื้อหา
+  excerpt: text('excerpt'),                     // เนื้อหาโดยย่อ
+  thumbnailUrl: text('thumbnail_url'),          // รูปหน้าปก (Thumbnail)
+  status: newsStatusEnum('status').default('draft').notNull(), // ใช้ enum เดียวกับข่าว
+  createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
+  updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
+  publishedAt: timestamp('published_at'),              // วันที่เผยแพร่
+});
 
 export const councilHistory = pgTable('council_history', {
   id: serial('id').primaryKey(),

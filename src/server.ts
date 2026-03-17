@@ -12,6 +12,7 @@ import { pharmacistRoutes } from "./routes/pharmacists";
 import { lawRoutes } from "./routes/laws";
 import { councilRoutes } from "./routes/council";
 import { newsRoutes } from "./routes/news";
+import { medicineRoutes } from "./routes/medicine";
 import { historyRoutes } from "./routes/history";
 import { agencyRoutes } from "./routes/agencies";
 import { authRoutes } from "./routes/auth";
@@ -68,6 +69,7 @@ app.register(pharmacistRoutes);   // ✅ เภสัชกร
 app.register(lawRoutes);          // ✅ กฎหมาย
 app.register(councilRoutes);      // ✅ กรรมการสภา
 app.register(newsRoutes);         // ✅ ข่าวสาร
+app.register(medicineRoutes);     // ✅ ความรู้เรื่องยา
 app.register(historyRoutes);      // ✅ ทำเนียบสภา
 app.register(agencyRoutes);       // ✅ หน่วยงาน
 app.register(webSettingRoutes);    // ✅ ตั้งค่าเว็บไซต์
