@@ -195,3 +195,17 @@ export const honors = pgTable('honors', {
   videoUrl: text('video_url'),               // วิดีโอ
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// 🛎️ ตารางบริการ (Service E)
+export const services = pgTable('services', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),                    // ชื่อของบริการ
+  shortName: varchar('short_name', { length: 50 }), // ชื่อย่อ เช่น สภ12
+  iconUrl: text('icon_url'),                       // URL ไอคอน
+  order: integer('order').notNull().default(0),    // ลำดับการแสดงผล
+  description: text('description'),                // รายละเอียดของบริการ
+  linkUrl: text('link_url'),                       // ลิงก์ URL
+  isPopular: boolean('is_popular').default(false), // เป็นบริการเด่นหรือไม่
+  popularOrder: integer('popular_order').default(0), // ลำดับ Popular (ใช้เรียงเมื่อ is_popular = true, มีได้สูงสุด 4)
+  createdAt: timestamp('created_at').defaultNow(),
+});
