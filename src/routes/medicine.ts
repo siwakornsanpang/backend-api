@@ -61,7 +61,7 @@ export async function medicineRoutes(app: FastifyInstance) {
 
   // POST: สร้างบทความความรู้เรื่องยา
   app.post('/medicine', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
-    const { title, content, excerpt, status, publishedAt, thumbnailUrl } = req.body as any;
+    const { title, content, excerpt, status, publishedAt, thumbnailUrl, category } = req.body as any;
     if (!title || !content) {
       return reply.status(400).send({ message: 'Title and content are required' });
     }
@@ -73,6 +73,7 @@ export async function medicineRoutes(app: FastifyInstance) {
         content,
         excerpt,
         thumbnailUrl,
+        category: category || 'medicine',
         status: status || 'draft',
         publishedAt: publishedAt ? new Date(publishedAt) : status === 'published' ? new Date() : null,
       })
@@ -85,7 +86,7 @@ export async function medicineRoutes(app: FastifyInstance) {
   app.put('/medicine/:id', { preHandler: [verifyToken, requirePermission('manage_news')] }, async (req, reply) => {
     try {
       const { id } = req.params as { id: string };
-      const { title, content, excerpt, status, publishedAt, thumbnailUrl } = req.body as any;
+      const { title, content, excerpt, status, publishedAt, thumbnailUrl, category } = req.body as any;
       const existing = await db
         .select()
         .from(medicineArticles)
@@ -125,6 +126,7 @@ export async function medicineRoutes(app: FastifyInstance) {
         content,
         excerpt,
         status,
+        category: category || existing[0].category || 'medicine',
         thumbnailUrl,
         updatedAt: new Date(),
         publishedAt: publishedAt ? new Date(publishedAt) : existing[0].publishedAt,

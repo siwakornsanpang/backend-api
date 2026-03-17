@@ -131,6 +131,7 @@ export const medicineArticles = pgTable('medicine_articles', {
   content: text('content').notNull(),           // เนื้อหา
   excerpt: text('excerpt'),                     // เนื้อหาโดยย่อ
   thumbnailUrl: text('thumbnail_url'),          // รูปหน้าปก (Thumbnail)
+  category: text('category').notNull().default('medicine'), // ประเภท (ตอนนี้ fix เป็น medicine)
   status: newsStatusEnum('status').default('draft').notNull(), // ใช้ enum เดียวกับข่าว
   createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
   updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
