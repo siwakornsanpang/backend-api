@@ -138,6 +138,20 @@ export const medicineArticles = pgTable('medicine_articles', {
   publishedAt: timestamp('published_at'),              // วันที่เผยแพร่
 });
 
+// ตารางโครงการของประชาชน (public project)
+export const publicProjectArticles = pgTable('public_project_articles', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),               // หัวข้อโครงการ
+  content: text('content').notNull(),           // รายละเอียดโครงการ
+  excerpt: text('excerpt'),                     // รายละเอียดโดยย่อ
+  thumbnailUrl: text('thumbnail_url'),          // รูปหน้าปก (Thumbnail)
+  category: text('category').notNull().default('public_project'), // ประเภท (ตอนนี้ fix เป็น public_project)
+  status: newsStatusEnum('status').default('draft').notNull(), // ใช้ enum เดียวกับข่าว
+  createdAt: timestamp('created_at').defaultNow(),     // วันที่สร้าง
+  updatedAt: timestamp('updated_at').defaultNow(),     // วันที่แก้ไขล่าสุด
+  publishedAt: timestamp('published_at'),              // วันที่เผยแพร่
+});
+
 export const councilHistory = pgTable('council_history', {
   id: serial('id').primaryKey(),
   term: text('term').notNull(),           // 1. วาระ (เช่น "13")
