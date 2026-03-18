@@ -8,17 +8,26 @@ import { streamToBuffer, uploadToStorage, uploadToStorageResumable, deleteFromSt
 
 export async function honorRoutes(app: FastifyInstance) {
 
-  // 1. GET: ดึงข้อมูลทั้งหมด
+  // 1. GET: ดึงข้อมูลทั้งหมด (filter by awardId)
   app.get('/honor', async (req, reply) => {
-    return await db.select()
+    const { awardId } = req.query as { awardId?: string };
+    
+    let query = db.select()
       .from(honors)
       .orderBy(asc(honors.order));
+    
+    if (awardId) {
+      query = query.where(eq(honors.awardId, parseInt(awardId))) as any;
+    }
+    
+    return await query;
   });
 
   // 2. POST: สร้างข้อมูลใหม่
   app.post('/honor', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
     const parts = req.parts();
     let prefix = '', name = '', awardName = '', workName = '', awardDetail = '', order = 99;
+    let awardId = 0;
     let imageUrl = '', originalImageUrl = '', videoUrl = '';
 
     for await (const part of parts) {
@@ -47,10 +56,12 @@ export async function honorRoutes(app: FastifyInstance) {
         if (part.fieldname === 'workName') workName = part.value as string;
         if (part.fieldname === 'awardDetail') awardDetail = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
+        if (part.fieldname === 'awardId') awardId = parseInt(part.value as string);
       }
     }
 
     await db.insert(honors).values({
+      awardId,
       order,
       prefix: prefix || null,
       name,

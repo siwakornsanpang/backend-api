@@ -21,6 +21,7 @@ import { authRoutes } from "./routes/auth";
 import { permissionRoutes } from "./routes/permissions";
 import { webSettingRoutes } from "./routes/setting";
 import { honorRoutes } from "./routes/honor";
+import { honorAwardsRoutes } from "./routes/honorAwards";
 import { serviceRoutes } from "./routes/services";
 import { publicProjectRoutes } from "./routes/publicProject";
 
@@ -77,7 +78,8 @@ app.register(medicineRoutes);     // ✅ ความรู้เรื่อง
 app.register(historyRoutes);      // ✅ ทำเนียบสภา
 app.register(agencyRoutes);       // ✅ หน่วยงาน
 app.register(webSettingRoutes);    // ✅ ตั้งค่าเว็บไซต์
-app.register(honorRoutes);         // ✅ เกียรติประวัติ
+app.register(honorRoutes);         // ✅ ผู้ได้รับเกียรติประวัติ
+app.register(honorAwardsRoutes);   // ✅ รางวัลเกียรติประวัติ
 app.register(serviceRoutes);       // ✅ บริการ (Service E)
 app.register(publicProjectRoutes); // ✅ โครงการของประชาชน
 
