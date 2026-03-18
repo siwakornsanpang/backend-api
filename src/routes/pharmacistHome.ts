@@ -39,7 +39,7 @@ async function deleteOldFiles(urls: string[]) {
 }
 
 export async function pharmacistHomeRoutes(app: FastifyInstance) {
-  
+
   // GET: ดึงข้อมูลหน้าแรก (เภสัชกร)
   app.get('/pharmacist-home-content', async () => {
     const content = await db.select().from(pharmacistHomeContent).limit(1);
@@ -51,93 +51,106 @@ export async function pharmacistHomeRoutes(app: FastifyInstance) {
 
   // POST: บันทึกข้อมูลหน้าแรก (เภสัชกร)
   app.post('/pharmacist-home-content', { preHandler: [verifyToken, requirePermission('manage_home')] }, async (req, reply) => {
-    const parts = req.parts();
-    
-    let bannerData: any[] = [];
-    let uploadedBannerUrls: string[] = [];
-    let uploadedOriginalUrls: string[] = [];
+    try {
+      const parts = req.parts();
 
-    for await (const part of parts) {
-      if (part.type === 'file') {
-        const ext = path.extname(part.filename);
-        const filename = `pharmacist-home/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
-        const fileBuffer = await streamToBuffer(part.file);
+      let bannerData: any[] = [];
+      let uploadedBannerUrls: string[] = [];
+      let uploadedOriginalUrls: string[] = [];
 
-        await supabase.storage.from('uploads').upload(filename, fileBuffer, {
-           contentType: part.mimetype, upsert: true 
-        });
+      for await (const part of parts) {
+        if (part.type === 'file') {
+          const ext = path.extname(part.filename);
+          const filename = `pharmacist-home/${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
+          const fileBuffer = await streamToBuffer(part.file);
 
-        const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
-        
-        if (part.fieldname === 'bannerFiles') {
-          uploadedBannerUrls.push(data.publicUrl);
-        } else if (part.fieldname === 'originalBannerFiles') {
-          uploadedOriginalUrls.push(data.publicUrl);
-        }
+          const { error: uploadError } = await supabase.storage.from('uploads').upload(filename, fileBuffer, {
+            contentType: part.mimetype, upsert: true
+          });
 
-      } else {
-        if (part.fieldname === 'bannerData') {
+          if (uploadError) {
+            console.error('[Supabase Upload Error]', uploadError);
+            throw new Error(`Upload failed: ${uploadError.message}`);
+          }
+
+          const { data } = supabase.storage.from('uploads').getPublicUrl(filename);
+
+          if (part.fieldname === 'bannerFiles') {
+            uploadedBannerUrls.push(data.publicUrl);
+          } else if (part.fieldname === 'originalBannerFiles') {
+            uploadedOriginalUrls.push(data.publicUrl);
+          }
+
+        } else {
+          if (part.fieldname === 'bannerData') {
             try { bannerData = JSON.parse(part.value as string); } catch (e) { bannerData = [] }
+          }
         }
       }
-    }
 
-    // ดึงข้อมูลเก่าจาก DB เพื่อเปรียบเทียบ
-    const existing = await db.select().from(pharmacistHomeContent).limit(1);
-    const oldBanners: any[] = (existing.length > 0 && existing[0].banners) ? existing[0].banners as any[] : [];
+      // ดึงข้อมูลเก่าจาก DB เพื่อเปรียบเทียบ
+      const existing = await db.select().from(pharmacistHomeContent).limit(1);
+      const oldBanners: any[] = (existing.length > 0 && existing[0].banners) ? existing[0].banners as any[] : [];
 
-    // === ประกอบ Banners ===
-    let newCroppedIndex = 0;
-    let newOriginalIndex = 0;
-    
-    const finalBanners = bannerData.map((item, index) => {
+      // === ประกอบ Banners ===
+      let newCroppedIndex = 0;
+      let newOriginalIndex = 0;
+
+      const finalBanners = bannerData.map((item, index) => {
         let url = item.url;
         let originalUrl = item.originalUrl || '';
-        
+
         if (item.isNewFile) {
-            url = uploadedBannerUrls[newCroppedIndex] || url;
-            newCroppedIndex++;
+          url = uploadedBannerUrls[newCroppedIndex] || url;
+          newCroppedIndex++;
         }
         if (item.isNewOriginal) {
-            originalUrl = uploadedOriginalUrls[newOriginalIndex] || originalUrl;
-            newOriginalIndex++;
+          originalUrl = uploadedOriginalUrls[newOriginalIndex] || originalUrl;
+          newOriginalIndex++;
         }
 
         return {
-            id: item.id || randomUUID(),
-            url, originalUrl,
-            title: item.title || '',
-            clickable: item.clickable || false,
-            linkUrl: item.linkUrl || '',
-            active: item.active,
-            order: index + 1
+          id: item.id || randomUUID(),
+          url, originalUrl,
+          title: item.title || '',
+          clickable: item.clickable || false,
+          linkUrl: item.linkUrl || '',
+          active: item.active,
+          order: index + 1
         };
-    });
+      });
 
-    // === หารูปเก่าที่ไม่ใช้แล้ว → ลบจาก Storage ===
-    const newUrls = new Set<string>();
-    finalBanners.forEach(b => { if (b.url) newUrls.add(b.url); if (b.originalUrl) newUrls.add(b.originalUrl); });
+      // === หารูปเก่าที่ไม่ใช้แล้ว → ลบจาก Storage ===
+      const newUrls = new Set<string>();
+      finalBanners.forEach(b => { if (b.url) newUrls.add(b.url); if (b.originalUrl) newUrls.add(b.originalUrl); });
 
-    const urlsToDelete: string[] = [];
-    oldBanners.forEach((old: any) => {
-      if (old.url && !newUrls.has(old.url)) urlsToDelete.push(old.url);
-      if (old.originalUrl && !newUrls.has(old.originalUrl)) urlsToDelete.push(old.originalUrl);
-    });
+      const urlsToDelete: string[] = [];
+      oldBanners.forEach((old: any) => {
+        if (old.url && !newUrls.has(old.url)) urlsToDelete.push(old.url);
+        if (old.originalUrl && !newUrls.has(old.originalUrl)) urlsToDelete.push(old.originalUrl);
+      });
 
-    if (urlsToDelete.length > 0) deleteOldFiles(urlsToDelete);
+      if (urlsToDelete.length > 0) deleteOldFiles(urlsToDelete);
 
-    // === Update Database ===
-    const updateData = {
+      // === Update Database ===
+      const updateData = {
         banners: finalBanners,
         updatedAt: new Date()
-    };
+      };
 
-    if (existing.length > 0) {
-      await db.update(pharmacistHomeContent).set(updateData).where(eq(pharmacistHomeContent.id, existing[0].id));
-    } else {
-      await db.insert(pharmacistHomeContent).values(updateData as any);
+      if (existing.length > 0) {
+        await db.update(pharmacistHomeContent).set(updateData).where(eq(pharmacistHomeContent.id, existing[0].id));
+      } else {
+        await db.insert(pharmacistHomeContent).values(updateData as any);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('[POST /pharmacist-home-content] Error:', err);
+      return reply.status(500).send({
+        success: false,
+        message: err.message || 'Internal Server Error'
+      });
     }
-
-    return { success: true };
   });
 }
