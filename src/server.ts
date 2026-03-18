@@ -8,6 +8,8 @@ import rateLimit from "@fastify/rate-limit";
 
 // Import Route ที่เราแยกไว้
 import { homeRoutes } from "./routes/home";
+import { pharmacistHomeRoutes } from "./routes/pharmacistHome";
+
 import { pharmacistRoutes } from "./routes/pharmacists";
 import { lawRoutes } from "./routes/laws";
 import { councilRoutes } from "./routes/council";
@@ -65,7 +67,8 @@ app.register(multipart, {
 // --- 2. Register Routes ---
 app.register(authRoutes);         // ✅ Auth (login, me, seed, user management)
 app.register(permissionRoutes);   // ✅ สิทธิ์ (permissions, role-permissions)
-app.register(homeRoutes);         // ✅ หน้าแรก
+app.register(homeRoutes);         // ✅ หน้าแรก (สภา)
+app.register(pharmacistHomeRoutes); // ✅ หน้าแรก (เภสัชกร)
 app.register(pharmacistRoutes);   // ✅ เภสัชกร
 app.register(lawRoutes);          // ✅ กฎหมาย
 app.register(councilRoutes);      // ✅ กรรมการสภา

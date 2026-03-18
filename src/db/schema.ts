@@ -60,6 +60,12 @@ export const homeContent = pgTable('home_content', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
+export const pharmacistHomeContent = pgTable('pharmacist_home_content', {
+  id: serial('id').primaryKey(),
+  banners: json('banners').$type<BannerItem[]>().default([]),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
 export const laws = pgTable('laws', {
   id: serial('id').primaryKey(),
   category: text('category').notNull(), // เก็บหมวดหมู่ (เช่น law1, law2)
@@ -71,16 +77,6 @@ export const laws = pgTable('laws', {
   status: text('status').default('online'),
   createdAt: timestamp('created_at').defaultNow(),
 });
-
-// src/db/schema.ts
-
-
-// ... ตารางอื่นๆ ...
-
-// 🔥 ตารางกรรมการสภา
-// src/db/schema.ts
-
-// ... (ส่วนอื่นๆ เหมือนเดิม)
 
 export const councilMembers = pgTable('council_members', {
   id: serial('id').primaryKey(),
