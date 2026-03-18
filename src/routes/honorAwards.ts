@@ -9,18 +9,25 @@ export async function honorAwardsRoutes(app: FastifyInstance) {
 
   // 1. GET: ดึงรายการรางวัลทั้งหมด (+ count ผู้ได้รับ)
   app.get('/honor-awards', async (req, reply) => {
-    const awards = await db.select({
-      id: honorAwards.id,
-      order: honorAwards.order,
-      name: honorAwards.name,
-      description: honorAwards.description,
-      createdAt: honorAwards.createdAt,
-      recipientCount: sql<number>`CAST((SELECT COUNT(*) FROM honors WHERE honors.award_id = ${honorAwards.id}) AS INTEGER)`.as('recipient_count'),
-    })
+    // ดึงรางวัลทั้งหมด
+    const allAwards = await db.select()
       .from(honorAwards)
       .orderBy(asc(honorAwards.order));
 
-    return awards;
+    // นับจำนวนผู้ได้รับรางวัลแต่ละรางวัล
+    const counts = await db.select({
+      awardId: honors.awardId,
+      count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
+    })
+      .from(honors)
+      .groupBy(honors.awardId);
+
+    const countMap = new Map(counts.map(c => [c.awardId, c.count]));
+
+    return allAwards.map(award => ({
+      ...award,
+      recipientCount: countMap.get(award.id) ?? 0,
+    }));
   });
 
   // 2. POST: สร้างรางวัลใหม่
