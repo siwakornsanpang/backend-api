@@ -15,7 +15,7 @@ export async function honorAwardsRoutes(app: FastifyInstance) {
       name: honorAwards.name,
       description: honorAwards.description,
       createdAt: honorAwards.createdAt,
-      recipientCount: sql<number>`(SELECT COUNT(*) FROM honors WHERE honors.award_id = ${honorAwards.id})`.as('recipient_count'),
+      recipientCount: sql<number>`CAST((SELECT COUNT(*) FROM honors WHERE honors.award_id = ${honorAwards.id}) AS INTEGER)`.as('recipient_count'),
     })
       .from(honorAwards)
       .orderBy(asc(honorAwards.order));
