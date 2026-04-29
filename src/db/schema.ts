@@ -1,6 +1,6 @@
 // src/db/schema.ts
 
-import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json, pgEnum, numeric } from 'drizzle-orm/pg-core';
 
 // ตาราง Users สำหรับระบบ RBAC
 export const users = pgTable('users', {
@@ -100,7 +100,10 @@ export const pharmacists = pgTable('pharmacists', {
   address: text('address'),                // ที่อยู่
   expiryDate: text('expiry_date'),         // วันหมดอายุ (เก็บเป็น text หรือ date ก็ได้ตามข้อมูลต้นทาง)
   imageUrl: text('image_url'),
-});
+}, (table) => ({
+  registrationIdUnq: unique().on(table.registrationId), // กำหนด Unique เพื่อใช้เป็น Foreign Key
+}));
+
 
 export const newsStatusEnum = pgEnum('news_status', ['draft', 'published']);
 export const newsCategoryEnum = pgEnum('news_category', ['news', 'recruitment', 'procurement']);
@@ -241,4 +244,76 @@ export const services = pgTable('services', {
   isPopular: boolean('is_popular').default(false), // เป็นบริการเด่นหรือไม่
   popularOrder: integer('popular_order').default(0), // ลำดับ Popular (ใช้เรียงเมื่อ is_popular = true, มีได้สูงสุด 4)
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ----------------------------------------
+// ระบบคำขอ (Requests System)
+// ----------------------------------------
+
+export const requestStatusEnum = pgEnum('request_status', [
+  'draft',
+  'pending',
+  'processing',
+  'incomplete',
+  'ready_to_ship',
+  'shipping',
+  'success'
+]);
+
+export const paymentMethodEnum = pgEnum('payment_method', [
+  'qr_payment',
+  'credit_card',
+  'bank_transfer'
+]);
+
+export const taxpayerTypeEnum = pgEnum('taxpayer_type', [
+  'individual',
+  'corporate'
+]);
+
+// 1. General Information (ข้อมูลพื้นฐาน)
+export const requests = pgTable('requests', {
+  id: varchar('id', { length: 50 }).primaryKey(), // Request ID เช่น 1718/2569
+  pharmacistLicenseId: text('pharmacist_license_id').notNull(), // เอา .references() ออกชั่วคราว
+  requestDate: timestamp('request_date').defaultNow(),
+
+  requestStatus: requestStatusEnum('request_status').default('draft'),
+  licenseType: varchar('license_type', { length: 100 }), // ประเภทของใบอนุญาต
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// 2. Shipping Details (ข้อมูลการจัดส่ง)
+export const requestShippingDetails = pgTable('request_shipping_details', {
+  id: serial('id').primaryKey(),
+  requestId: varchar('request_id', { length: 50 }).references(() => requests.id, { onDelete: 'cascade' }).notNull(),
+  shippingAddress: text('shipping_address'),
+  trackingNumber: varchar('tracking_number', { length: 100 }), // EMS/Kerry
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// 3. Payment Log (บันทึกการชำระเงิน)
+export const requestPaymentLogs = pgTable('request_payment_logs', {
+  id: serial('id').primaryKey(),
+  requestId: varchar('request_id', { length: 50 }).references(() => requests.id, { onDelete: 'cascade' }).notNull(),
+  paymentDate: timestamp('payment_date'),
+  amountPaid: numeric('amount_paid', { precision: 10, scale: 2 }), // ยอดเงินสุทธิ
+  paymentMethod: paymentMethodEnum('payment_method'), // QR Payment, Credit Card, Bank Transfer
+  paymentReferenceId: varchar('payment_reference_id', { length: 100 }), // Transaction ID
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// 4. Tax Invoice Details (ข้อมูลการออกใบกำกับภาษี)
+export const requestTaxInvoices = pgTable('request_tax_invoices', {
+  id: serial('id').primaryKey(),
+  requestId: varchar('request_id', { length: 50 }).references(() => requests.id, { onDelete: 'cascade' }).notNull(),
+  taxpayerType: taxpayerTypeEnum('taxpayer_type'), // Individual / Corporate
+  taxInvoiceName: varchar('tax_invoice_name', { length: 255 }),
+  taxIdNumber: varchar('tax_id_number', { length: 13 }), // เลขประจำตัวผู้เสียภาษี 13 หลัก
+  branchCode: varchar('branch_code', { length: 50 }), // รหัสสาขา (เช่น 00000)
+  registeredTaxAddress: text('registered_tax_address'),
+  taxInvoiceNumber: varchar('tax_invoice_number', { length: 100 }), // เลขที่ใบกำกับภาษี
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
