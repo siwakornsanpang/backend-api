@@ -39,39 +39,21 @@ export async function policyRoutes(app: FastifyInstance) {
     return result[0];
   });
 
-  // 3. POST: เพิ่มหมวดหมู่ใหม่ (รองรับไฟล์ PDF สรุป)
+  // 3. POST: เพิ่มหมวดหมู่ใหม่
   app.post('/policy-categories', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
-    const parts = req.parts();
-    let title = '', description = '', order = 0;
-    let summaryPdfUrl = '';
-
-    for await (const part of parts) {
-      if (part.type === 'file') {
-        const buffer = await streamToBuffer(part.file);
-        if (part.fieldname === 'summaryPdf') {
-          const u = await uploadToStorage('policy', buffer, part.filename, part.mimetype, 'summary');
-          if (u) summaryPdfUrl = u;
-        }
-      } else {
-        if (part.fieldname === 'title') title = part.value as string;
-        if (part.fieldname === 'description') description = part.value as string;
-        if (part.fieldname === 'order') order = parseInt(part.value as string);
-      }
-    }
+    const { title, order } = req.body as { title: string; order?: number };
 
     if (!title) return reply.status(400).send({ message: 'Title is required' });
 
-    // Auto order if not provided
+    let finalOrder = order ?? 0;
     if (!order) {
       const maxOrder = await db.select({ max: sql<number>`COALESCE(MAX(${policyCategories.order}), 0)` }).from(policyCategories);
-      order = (maxOrder[0]?.max ?? 0) + 1;
+      finalOrder = (maxOrder[0]?.max ?? 0) + 1;
     }
 
     const result = await db.insert(policyCategories).values({
       title,
-      description: description || null,
-      summaryPdfUrl: summaryPdfUrl || null,
-      order,
+      order: finalOrder,
     }).returning();
 
     return { success: true, data: result[0] };
@@ -80,40 +62,11 @@ export async function policyRoutes(app: FastifyInstance) {
   // 4. PUT: แก้ไขหมวดหมู่
   app.put('/policy-categories/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
-    const parts = req.parts();
+    const { title, order } = req.body as { title?: string; order?: number };
     
-    const existing = await db.select().from(policyCategories).where(eq(policyCategories.id, parseInt(id))).limit(1);
-    if (!existing.length) return reply.status(404).send({ message: 'Not found' });
-
-    let title, description, order;
-    let summaryPdfUrl: string | undefined;
-    let removePdf = false;
-
-    for await (const part of parts) {
-      if (part.type === 'file') {
-        const buffer = await streamToBuffer(part.file);
-        if (part.fieldname === 'summaryPdf') {
-          const u = await uploadToStorage('policy', buffer, part.filename, part.mimetype, 'summary');
-          if (u) summaryPdfUrl = u;
-        }
-      } else {
-        if (part.fieldname === 'title') title = part.value as string;
-        if (part.fieldname === 'description') description = part.value as string;
-        if (part.fieldname === 'order') order = parseInt(part.value as string);
-        if (part.fieldname === 'removePdf' && part.value === 'true') removePdf = true;
-      }
-    }
-
-    // ลบไฟล์เก่าถ้ามีไฟล์ใหม่
-    if ((summaryPdfUrl || removePdf) && existing[0].summaryPdfUrl) {
-      await deleteFromStorage([existing[0].summaryPdfUrl]);
-    }
-
     await db.update(policyCategories).set({
-      title: title || existing[0].title,
-      description: description !== undefined ? description : existing[0].description,
-      summaryPdfUrl: removePdf ? null : (summaryPdfUrl || existing[0].summaryPdfUrl),
-      order: order !== undefined ? order : existing[0].order,
+      title: title || undefined,
+      order: order !== undefined ? order : undefined,
     }).where(eq(policyCategories.id, parseInt(id)));
 
     return { success: true };
@@ -132,11 +85,6 @@ export async function policyRoutes(app: FastifyInstance) {
   app.delete('/policy-categories/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const catId = parseInt(id);
-
-    const target = await db.select().from(policyCategories).where(eq(policyCategories.id, catId)).limit(1);
-    if (target.length > 0 && target[0].summaryPdfUrl) {
-      await deleteFromStorage([target[0].summaryPdfUrl]);
-    }
 
     // ลบโครงการลูกและไฟล์ PDF ของโครงการลูกด้วย
     const childProjects = await db.select().from(policyProjects).where(eq(policyProjects.categoryId, catId));
@@ -162,7 +110,7 @@ export async function policyRoutes(app: FastifyInstance) {
   // 8. POST: เพิ่มโครงการใหม่
   app.post('/policy-projects', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const parts = req.parts();
-    let name = '', summaryUrl = '#', status = 'planned', order = 0, categoryId = 0;
+    let name = '', status = 'planned', order = 0, categoryId = 0;
     let summaryPdfUrl = '';
 
     for await (const part of parts) {
@@ -174,7 +122,6 @@ export async function policyRoutes(app: FastifyInstance) {
         }
       } else {
         if (part.fieldname === 'name') name = part.value as string;
-        if (part.fieldname === 'summaryUrl') summaryUrl = part.value as string;
         if (part.fieldname === 'status') status = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
         if (part.fieldname === 'categoryId') categoryId = parseInt(part.value as string);
@@ -191,7 +138,6 @@ export async function policyRoutes(app: FastifyInstance) {
     await db.insert(policyProjects).values({
       categoryId,
       name,
-      summaryUrl,
       summaryPdfUrl: summaryPdfUrl || null,
       status,
       order,
@@ -207,7 +153,7 @@ export async function policyRoutes(app: FastifyInstance) {
     const existing = await db.select().from(policyProjects).where(eq(policyProjects.id, parseInt(id))).limit(1);
     if (!existing.length) return reply.status(404).send({ message: 'Not found' });
 
-    let name, summaryUrl, status, order;
+    let name, status, order;
     let summaryPdfUrl: string | undefined;
     let removePdf = false;
 
@@ -220,7 +166,6 @@ export async function policyRoutes(app: FastifyInstance) {
         }
       } else {
         if (part.fieldname === 'name') name = part.value as string;
-        if (part.fieldname === 'summaryUrl') summaryUrl = part.value as string;
         if (part.fieldname === 'status') status = part.value as string;
         if (part.fieldname === 'order') order = parseInt(part.value as string);
         if (part.fieldname === 'removePdf' && part.value === 'true') removePdf = true;
@@ -233,7 +178,6 @@ export async function policyRoutes(app: FastifyInstance) {
 
     await db.update(policyProjects).set({
       name: name || existing[0].name,
-      summaryUrl: summaryUrl !== undefined ? summaryUrl : existing[0].summaryUrl,
       summaryPdfUrl: removePdf ? null : (summaryPdfUrl || existing[0].summaryPdfUrl),
       status: status || existing[0].status,
       order: order !== undefined ? order : existing[0].order,

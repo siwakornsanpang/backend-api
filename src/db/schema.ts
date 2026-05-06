@@ -322,8 +322,6 @@ export const requestTaxInvoices = pgTable('request_tax_invoices', {
 export const policyCategories = pgTable('policy_categories', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
-  description: text('description'), // เพิ่มคำอธิบายหมวดหมู่
-  summaryPdfUrl: text('summary_pdf_url'), // หัวข้อสรุปแบบ PDF
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -333,7 +331,6 @@ export const policyProjects = pgTable('policy_projects', {
   id: serial('id').primaryKey(),
   categoryId: integer('category_id').references(() => policyCategories.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
-  summaryUrl: text('summary_url').default('#'),
   summaryPdfUrl: text('summary_pdf_url'), // ลิงก์ไฟล์ PDF สรุปโครงการ
   status: text('status').notNull().default('planned'), // planned | ongoing | completed | delayed | terminated
   order: integer('order').notNull().default(0),
