@@ -31,7 +31,7 @@ export async function honorAwardsRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: สร้างรางวัลใหม่
-  app.post('/honor-awards', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.post('/honor-awards', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { name, description, order } = req.body as { name: string; description?: string; order?: number };
 
     if (!name || !name.trim()) {
@@ -55,7 +55,7 @@ export async function honorAwardsRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไขรางวัล
-  app.put('/honor-awards/:id', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.put('/honor-awards/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const { name, description } = req.body as { name?: string; description?: string };
 
@@ -71,7 +71,7 @@ export async function honorAwardsRoutes(app: FastifyInstance) {
   });
 
   // 4. PUT: จัดเรียงลำดับรางวัล
-  app.put('/honor-awards/reorder', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.put('/honor-awards/reorder', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const items = req.body as { id: number; order: number }[];
     if (!Array.isArray(items)) {
       return reply.status(400).send({ message: 'Invalid format' });
@@ -87,7 +87,7 @@ export async function honorAwardsRoutes(app: FastifyInstance) {
   });
 
   // 5. DELETE: ลบรางวัล + ลบผู้ได้รับทั้งหมดในรางวัลนี้
-  app.delete('/honor-awards/:id', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.delete('/honor-awards/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const awardId = parseInt(id);
 

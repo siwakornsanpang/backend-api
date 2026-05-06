@@ -40,7 +40,7 @@ export async function permissionRoutes(app: FastifyInstance) {
   // DELETE /permissions/:key — ลบ permission
   app.delete('/permissions/:key', { preHandler: [verifyToken, requirePermission('manage_roles')] }, async (req, reply) => {
     const { key } = req.params as { key: string };
-    
+
     // ลบ role_permissions ที่เกี่ยวข้องก่อน
     await db.delete(rolePermissions).where(eq(rolePermissions.permissionKey, key));
     // ลบ permission
@@ -58,7 +58,7 @@ export async function permissionRoutes(app: FastifyInstance) {
     // ดึง roles ที่ไม่ซ้ำจาก role_permissions + users table
     const rolesFromPerms = await db.selectDistinct({ role: rolePermissions.role }).from(rolePermissions);
     const rolesFromUsers = await db.selectDistinct({ role: users.role }).from(users);
-    
+
     // รวม roles ทั้งสองแหล่งให้ไม่ซ้ำ
     const allRoles = new Set<string>();
     rolesFromPerms.forEach(r => allRoles.add(r.role));

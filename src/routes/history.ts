@@ -14,7 +14,7 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: สร้างใหม่
-  app.post('/history', { preHandler: [verifyToken, requirePermission('manage_history')] }, async (req, reply) => {
+  app.post('/history', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const parts = req.parts();
     let term = '', startYear = '', endYear = '', presidentName = '', secretaryName = '';
     let presidentImage = '', secretaryImage = '';
@@ -40,14 +40,14 @@ export async function historyRoutes(app: FastifyInstance) {
     }
 
     await db.insert(councilHistory).values({
-      term, startYear, endYear, presidentName, secretaryName, 
+      term, startYear, endYear, presidentName, secretaryName,
       presidentImage, secretaryImage, originalPresidentImage, originalSecretaryImage
     });
     return { success: true };
   });
 
   // 3. PUT: แก้ไข
-  app.put('/history/:id', { preHandler: [verifyToken, requirePermission('manage_history')] }, async (req, reply) => {
+  app.put('/history/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
 
@@ -87,7 +87,7 @@ export async function historyRoutes(app: FastifyInstance) {
     }
     if (newUploadUrls.originalPresidentImage) {
       if (oldData[0].originalPresidentImage && oldData[0].originalPresidentImage !== updateData.presidentImage) {
-          urlsToDelete.push(oldData[0].originalPresidentImage);
+        urlsToDelete.push(oldData[0].originalPresidentImage);
       }
       updateData.originalPresidentImage = newUploadUrls.originalPresidentImage;
     }
@@ -98,7 +98,7 @@ export async function historyRoutes(app: FastifyInstance) {
     }
     if (newUploadUrls.originalSecretaryImage) {
       if (oldData[0].originalSecretaryImage && oldData[0].originalSecretaryImage !== updateData.secretaryImage) {
-          urlsToDelete.push(oldData[0].originalSecretaryImage);
+        urlsToDelete.push(oldData[0].originalSecretaryImage);
       }
       updateData.originalSecretaryImage = newUploadUrls.originalSecretaryImage;
     }
@@ -123,12 +123,12 @@ export async function historyRoutes(app: FastifyInstance) {
   });
 
   // 4. DELETE: ลบ
-  app.delete('/history/:id', { preHandler: [verifyToken, requirePermission('manage_history')] }, async (req, reply) => {
+  app.delete('/history/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const memberId = parseInt(id);
 
     const target = await db.select().from(councilHistory).where(eq(councilHistory.id, memberId)).limit(1);
-    
+
     if (target.length > 0) {
       const urlsToDelete = [
         target[0].presidentImage,
@@ -138,8 +138,8 @@ export async function historyRoutes(app: FastifyInstance) {
       ].filter((url): url is string => !!url); // กรองเอาแต่ string ที่มีค่าจริงๆ
 
       if (urlsToDelete.length > 0) {
-         // ลบรูปแบบ async ไม่ให้ตอบกลับช้า
-         deleteFromStorage(urlsToDelete).catch(e => console.error("Error deleting history images on delete:", e));
+        // ลบรูปแบบ async ไม่ให้ตอบกลับช้า
+        deleteFromStorage(urlsToDelete).catch(e => console.error("Error deleting history images on delete:", e));
       }
     }
 

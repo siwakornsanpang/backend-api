@@ -11,20 +11,20 @@ export async function honorRoutes(app: FastifyInstance) {
   // 1. GET: ดึงข้อมูลทั้งหมด (filter by awardId)
   app.get('/honor', async (req, reply) => {
     const { awardId } = req.query as { awardId?: string };
-    
+
     let query = db.select()
       .from(honors)
       .orderBy(asc(honors.order));
-    
+
     if (awardId) {
       query = query.where(eq(honors.awardId, parseInt(awardId))) as any;
     }
-    
+
     return await query;
   });
 
   // 2. POST: สร้างข้อมูลใหม่
-  app.post('/honor', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.post('/honor', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const parts = req.parts();
     let prefix = '', name = '', awardName = '', workName = '', awardDetail = '', order = 99;
     let awardId = 0;
@@ -76,7 +76,7 @@ export async function honorRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไขข้อมูล
-  app.put('/honor/:id', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.put('/honor/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
 
@@ -141,7 +141,7 @@ export async function honorRoutes(app: FastifyInstance) {
   });
 
   // 4. PUT: อัปเดตลำดับ (Reorder)
-  app.put('/honor/reorder', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.put('/honor/reorder', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const items = req.body as { id: number; order: number }[];
     if (!Array.isArray(items)) {
       return reply.status(400).send({ message: 'Invalid format' });
@@ -157,7 +157,7 @@ export async function honorRoutes(app: FastifyInstance) {
   });
 
   // 5. DELETE: ลบ + ลบไฟล์เก่า (รูป + วิดีโอ)
-  app.delete('/honor/:id', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.delete('/honor/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const honorId = parseInt(id);
 

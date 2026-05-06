@@ -16,7 +16,7 @@ export async function councilRoutes(app: FastifyInstance) {
   });
 
   // 2. POST: สร้างข้อมูลใหม่
-  app.post('/council', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.post('/council', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const parts = req.parts();
     let prefix = '', name = '', position = '', type = 'elected', order = 99, imageUrl = '', originalImageUrl = '', background = '';
 
@@ -51,7 +51,7 @@ export async function councilRoutes(app: FastifyInstance) {
   });
 
   // 3. PUT: แก้ไขข้อมูล
-  app.put('/council/:id', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.put('/council/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parts = req.parts();
 
@@ -102,7 +102,7 @@ export async function councilRoutes(app: FastifyInstance) {
   });
 
   // 4. PUT: อัปเดตลำดับ (Reorder)
-  app.put('/council/reorder', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.put('/council/reorder', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const items = req.body as { id: number; order: number }[];
     if (!Array.isArray(items)) {
       return reply.status(400).send({ message: 'Invalid format' });
@@ -119,7 +119,7 @@ export async function councilRoutes(app: FastifyInstance) {
   });
 
   // 5. DELETE: ลบ + ลบรูปเก่า
-  app.delete('/council/:id', { preHandler: [verifyToken, requirePermission('manage_council')] }, async (req, reply) => {
+  app.delete('/council/:id', { preHandler: [verifyToken, requirePermission('manage_about')] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const memberId = parseInt(id);
 
