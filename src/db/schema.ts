@@ -336,3 +336,15 @@ export const policyProjects = pgTable('policy_projects', {
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// 📦 ตารางสินค้า (Products)
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  imageUrl: text('image_url'),
+  category: text('category').notNull(),
+  description: text('description'),
+  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});

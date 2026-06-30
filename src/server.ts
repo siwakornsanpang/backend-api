@@ -26,6 +26,7 @@ import { serviceRoutes } from "./routes/services";
 import { publicProjectRoutes } from "./routes/publicProject";
 import { requestRoutes } from "./routes/requests";
 import { policyRoutes } from "./routes/policy";
+import { productsRoutes } from "./routes/products";
 
 const app = Fastify({
   logger: true,
@@ -86,6 +87,7 @@ app.register(serviceRoutes);       // ✅ บริการ (Service E)
 app.register(publicProjectRoutes); // ✅ โครงการของประชาชน
 app.register(requestRoutes);       // ✅ ระบบคำขอ
 app.register(policyRoutes);        // ✅ นโยบายสภา
+app.register(productsRoutes);      // ✅ จัดการสินค้า
 
 
 // --- 3. Start Server ---
