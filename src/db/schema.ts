@@ -348,3 +348,22 @@ export const products = pgTable('products', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// 📂 บริการอื่นๆ — หมวดหมู่ (Other Service Categories)
+export const otherServiceCategories = pgTable('other_service_categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  order: integer('order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// 📄 บริการอื่นๆ — รายการไฟล์ PDF (Other Service Items)
+export const otherServiceItems = pgTable('other_service_items', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id').references(() => otherServiceCategories.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  status: text('status').notNull().default('online'), // online | offline
+  pdfUrl: text('pdf_url'),
+  order: integer('order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
