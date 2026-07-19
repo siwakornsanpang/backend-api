@@ -52,13 +52,24 @@ app.register(rateLimit, {
   timeWindow: '1 minute',
 });
 
-// CORS
+// CORS — allow localhost + FRONTEND_URL / BACKOFFICE_URL / CORS_ORIGINS (comma-separated)
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.FRONTEND_URL,
+  process.env.BACKOFFICE_URL,
+  ...(process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? []),
+].filter((o): o is string => Boolean(o));
+
 app.register(cors, {
-  origin: [
-    'http://localhost:3000',                          // dev
-    'http://localhost:3001',                          // dev alt
-    process.env.FRONTEND_URL || 'http://localhost:3000', // production
-  ],
+  origin: (origin, cb) => {
+    // Non-browser clients (no Origin) or whitelisted frontends
+    if (!origin || allowedOrigins.includes(origin)) {
+      cb(null, true);
+      return;
+    }
+    cb(null, false);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
