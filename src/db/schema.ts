@@ -236,7 +236,7 @@ export const honors = pgTable('honors', {
 export const services = pgTable('services', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),                    // ชื่อของบริการ
-  shortName: varchar('short_name', { length: 50 }), // ชื่อย่อ เช่น สภ12
+  shortName: text('short_name'),                   // ชื่อย่อ / ชื่อสั้นของบริการ (ยาวได้)
   iconUrl: text('icon_url'),                       // URL ไอคอน
   order: integer('order').notNull().default(0),    // ลำดับการแสดงผล
   description: text('description'),                // รายละเอียดของบริการ
