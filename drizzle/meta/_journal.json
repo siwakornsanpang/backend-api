@@ -15,6 +15,13 @@
       "when": 1787511600000,
       "tag": "0001_services_short_name_text",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789516800000,
+      "tag": "0002_honors_full_detail",
+      "breakpoints": true
     }
   ]
 }

@@ -226,9 +226,10 @@ export const honors = pgTable('honors', {
   awardName: text('award_name'),             // ชื่อรางวัล (legacy, kept for migration)
   workName: text('work_name'),              // ชื่อผลงาน
   awardDetail: text('award_detail'),         // รายละเอียดรางวัล (text ยาว)
+  fullDetail: text('full_detail'),           // ข้อมูลผู้ได้รับรางวัลฉบับเต็ม (rich text)
   imageUrl: text('image_url'),               // รูปเภสัช (cropped 4:3)
   originalImageUrl: text('original_image_url'), // รูปต้นฉบับ
-  videoUrl: text('video_url'),               // วิดีโอ
+  videoUrl: text('video_url'),               // ลิงก์วิดีโอ YouTube
   createdAt: timestamp('created_at').defaultNow(),
 });
 
