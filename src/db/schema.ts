@@ -171,7 +171,7 @@ export const agencies = pgTable('agencies', {
   name: text('name').notNull(),              // ชื่อหน่วยงาน
   title: text('title'),                      // ชื่อ title
   description: text('description'),          // คำอธิบายหน่วยงาน
-  thumbnailUrl: text('thumbnail_url'),       // Thumbnail (cropped 1:1)
+  thumbnailUrl: text('thumbnail_url'),       // Thumbnail (cropped 3:2 — website hero card)
   originalThumbnailUrl: text('original_thumbnail_url'), // ต้นฉบับสำหรับ re-crop
   logoUrl: text('logo_url'),                 // Logo (ไม่ครอป)
   iconUrl: text('icon_url'),                 // Icon (ไม่ครอป)
