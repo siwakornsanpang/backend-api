@@ -1,6 +1,7 @@
 // src/db/schema.ts
 
-import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json, pgEnum, numeric } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp, integer, date, unique, boolean, json, pgEnum, numeric, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 // ตาราง Users สำหรับระบบ RBAC
 export const users = pgTable('users', {
@@ -367,3 +368,75 @@ export const otherServiceItems = pgTable('other_service_items', {
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// Pharmacy Academy data is isolated from back-office users and legacy payment tables.
+export const academyCourseStatusEnum = pgEnum('academy_course_status', ['draft', 'published', 'archived']);
+export const academyOrderStatusEnum = pgEnum('academy_order_status', ['pending', 'mock_paid', 'cancelled']);
+export const academyEnrollmentStatusEnum = pgEnum('academy_enrollment_status', ['active', 'cancelled']);
+
+export const academyCategories = pgTable('academy_categories', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 150 }).notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({ nameUnique: uniqueIndex('academy_categories_name_unique_idx').on(table.name) }));
+
+export const academyCourses = pgTable('academy_courses', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id').references(() => academyCategories.id, { onDelete: 'set null' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  summary: text('summary'),
+  details: text('details'),
+  instructorName: varchar('instructor_name', { length: 255 }),
+  thumbnailUrl: text('thumbnail_url'),
+  durationMinutes: integer('duration_minutes').notNull().default(0),
+  cpeCredits: numeric('cpe_credits', { precision: 6, scale: 2 }).notNull().default('0'),
+  price: numeric('price', { precision: 10, scale: 2 }).notNull().default('0'),
+  maxStudents: integer('max_students'),
+  enrollmentDeadline: timestamp('enrollment_deadline', { withTimezone: true }),
+  status: academyCourseStatusEnum('status').notNull().default('draft'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  statusIdx: index('academy_courses_status_idx').on(table.status),
+  categoryIdx: index('academy_courses_category_idx').on(table.categoryId),
+}));
+
+export const academyLearners = pgTable('academy_learners', {
+  id: serial('id').primaryKey(),
+  pharmacySubject: varchar('pharmacy_subject', { length: 255 }).notNull(),
+  pharmacistLicense: varchar('pharmacist_license', { length: 100 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  subjectUnique: uniqueIndex('academy_learners_subject_unique_idx').on(table.pharmacySubject),
+  licenseUnique: uniqueIndex('academy_learners_license_unique_idx').on(table.pharmacistLicense),
+}));
+
+export const academyOrders = pgTable('academy_orders', {
+  id: serial('id').primaryKey(),
+  learnerId: integer('learner_id').notNull().references(() => academyLearners.id),
+  courseId: integer('course_id').notNull().references(() => academyCourses.id),
+  amountSnapshot: numeric('amount_snapshot', { precision: 10, scale: 2 }).notNull(),
+  status: academyOrderStatusEnum('status').notNull().default('pending'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  pendingUnique: uniqueIndex('academy_orders_pending_unique_idx')
+    .on(table.learnerId, table.courseId)
+    .where(sql`${table.status} = 'pending'`),
+}));
+
+export const academyEnrollments = pgTable('academy_enrollments', {
+  id: serial('id').primaryKey(),
+  learnerId: integer('learner_id').notNull().references(() => academyLearners.id),
+  courseId: integer('course_id').notNull().references(() => academyCourses.id),
+  sourceOrderId: integer('source_order_id').references(() => academyOrders.id),
+  status: academyEnrollmentStatusEnum('status').notNull().default('active'),
+  enrolledAt: timestamp('enrolled_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  learnerCourseUnique: uniqueIndex('academy_enrollments_learner_course_unique_idx').on(table.learnerId, table.courseId),
+  courseStatusIdx: index('academy_enrollments_course_status_idx').on(table.courseId, table.status),
+}));

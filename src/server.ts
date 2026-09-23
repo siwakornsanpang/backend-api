@@ -28,6 +28,7 @@ import { requestRoutes } from "./routes/requests";
 import { policyRoutes } from "./routes/policy";
 import { productsRoutes } from "./routes/products";
 import { otherServiceRoutes } from "./routes/otherService";
+import { academyRoutes } from "./routes/academy";
 
 const app = Fastify({
   logger: true,
@@ -59,7 +60,7 @@ app.register(cors, {
     'http://localhost:3001',                          // dev alt
     process.env.FRONTEND_URL || 'http://localhost:3000', // production
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 });
@@ -90,6 +91,7 @@ app.register(requestRoutes);       // ✅ ระบบคำขอ
 app.register(policyRoutes);        // ✅ นโยบายสภา
 app.register(productsRoutes);      // ✅ จัดการสินค้า
 app.register(otherServiceRoutes);  // ✅ บริการอื่นๆ
+app.register(academyRoutes);       // ✅ Pharmacy Academy
 
 
 // --- 3. Start Server ---
