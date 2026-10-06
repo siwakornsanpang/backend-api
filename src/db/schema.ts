@@ -368,3 +368,141 @@ export const otherServiceItems = pgTable('other_service_items', {
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// Pharmacy Academy — เฟส 1 แคตตาล็อก
+export const academyCourseStatusEnum = pgEnum('academy_course_status', ['draft', 'published', 'archived']);
+export const academyAudienceEnum = pgEnum('academy_course_audience', ['all', 'general', 'pharmacist']);
+
+export const academyCategories = pgTable('academy_categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  color: varchar('color', { length: 20 }).default('#737300'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isVisible: boolean('is_visible').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const academyInstructors = pgTable('academy_instructors', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  title: text('title'),
+  expertise: text('expertise'),
+  imageUrl: text('image_url'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isVisible: boolean('is_visible').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const academyCourses = pgTable('academy_courses', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id').references(() => academyCategories.id, { onDelete: 'set null' }),
+  instructorId: integer('instructor_id').references(() => academyInstructors.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  coverUrl: text('cover_url'),
+  durationLabel: text('duration_label'),
+  cpeCredits: numeric('cpe_credits', { precision: 5, scale: 2 }).default('0'),
+  conferenceCode: varchar('conference_code', { length: 255 }),
+  price: numeric('price', { precision: 10, scale: 2 }).notNull().default('0'),
+  audience: academyAudienceEnum('audience').notNull().default('all'),
+  format: text('format').notNull().default('online'),
+  venue: text('venue'),
+  trainingStartsAt: timestamp('training_starts_at'),
+  trainingEndsAt: timestamp('training_ends_at'),
+  status: academyCourseStatusEnum('status').notNull().default('draft'),
+  isFeatured: boolean('is_featured').notNull().default(false),
+  popularOrder: integer('popular_order').notNull().default(0),
+  exam: json('exam'),
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const academyCourseOutcomes = pgTable('academy_course_outcomes', {
+  id: serial('id').primaryKey(),
+  courseId: integer('course_id').references(() => academyCourses.id, { onDelete: 'cascade' }).notNull(),
+  text: text('text').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+});
+
+export const academyReviews = pgTable('academy_reviews', {
+  id: serial('id').primaryKey(),
+  courseId: integer('course_id').references(() => academyCourses.id, { onDelete: 'cascade' }).notNull(),
+  rating: integer('rating').notNull(),
+  body: text('body').notNull(),
+  reviewerName: text('reviewer_name').notNull(),
+  reviewerRole: text('reviewer_role'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const academyLessons = pgTable('academy_lessons', {
+  id: serial('id').primaryKey(),
+  courseId: integer('course_id').references(() => academyCourses.id, { onDelete: 'cascade' }).notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  videoUrl: text('video_url'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  quiz: json('quiz'),
+});
+
+export const academyLessonDocuments = pgTable('academy_lesson_documents', {
+  id: serial('id').primaryKey(),
+  lessonId: integer('lesson_id').references(() => academyLessons.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+});
+
+export const academyEnrollments = pgTable('academy_enrollments', {
+  id: serial('id').primaryKey(),
+  pharmacistLicense: text('pharmacist_license').notNull(),
+  displayName: text('display_name'),
+  courseId: integer('course_id').references(() => academyCourses.id, { onDelete: 'cascade' }).notNull(),
+  status: text('status').notNull().default('active'),
+  progressPercent: numeric('progress_percent', { precision: 5, scale: 2 }).default('0'),
+  examPassed: boolean('exam_passed').notNull().default(false),
+  enrolledAt: timestamp('enrolled_at').defaultNow(),
+}, (table) => ({
+  licenseCourse: unique().on(table.pharmacistLicense, table.courseId),
+}));
+
+export const academyOrders = pgTable('academy_orders', {
+  id: serial('id').primaryKey(),
+  pharmacistLicense: text('pharmacist_license').notNull(),
+  displayName: text('display_name'),
+  courseId: integer('course_id').references(() => academyCourses.id, { onDelete: 'cascade' }).notNull(),
+  amount: numeric('amount', { precision: 10, scale: 2 }).notNull().default('0'),
+  status: text('status').notNull().default('pending'),
+  slipUrl: text('slip_url'),
+  createdAt: timestamp('created_at').defaultNow(),
+  reviewedAt: timestamp('reviewed_at'),
+});
+
+export const academyRefundRequests = pgTable('academy_refund_requests', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').references(() => academyOrders.id, { onDelete: 'cascade' }).notNull(),
+  reason: text('reason').notNull(),
+  status: text('status').notNull().default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const academyCertificates = pgTable('academy_certificates', {
+  id: serial('id').primaryKey(),
+  enrollmentId: integer('enrollment_id').references(() => academyEnrollments.id, { onDelete: 'cascade' }).notNull().unique(),
+  code: text('code').notNull(),
+  issuedAt: timestamp('issued_at').defaultNow(),
+});
+
+export const academyLessonProgress = pgTable('academy_lesson_progress', {
+  id: serial('id').primaryKey(),
+  pharmacistLicense: text('pharmacist_license').notNull(),
+  lessonId: integer('lesson_id').references(() => academyLessons.id, { onDelete: 'cascade' }).notNull(),
+  isCompleted: boolean('is_completed').notNull().default(false),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  licenseLesson: unique().on(table.pharmacistLicense, table.lessonId),
+}));

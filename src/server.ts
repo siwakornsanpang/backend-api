@@ -28,6 +28,7 @@ import { requestRoutes } from "./routes/requests";
 import { policyRoutes } from "./routes/policy";
 import { productsRoutes } from "./routes/products";
 import { otherServiceRoutes } from "./routes/otherService";
+import { academyRoutes } from "./routes/academy";
 
 const app = Fastify({
   logger: true,
@@ -64,7 +65,8 @@ const allowedOrigins = [
 app.register(cors, {
   origin: (origin, cb) => {
     // Non-browser clients (no Origin) or whitelisted frontends
-    if (!origin || allowedOrigins.includes(origin)) {
+    const localOrigin = Boolean(origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin));
+    if (!origin || localOrigin || allowedOrigins.includes(origin)) {
       cb(null, true);
       return;
     }
@@ -101,6 +103,7 @@ app.register(requestRoutes);       // ✅ ระบบคำขอ
 app.register(policyRoutes);        // ✅ นโยบายสภา
 app.register(productsRoutes);      // ✅ จัดการสินค้า
 app.register(otherServiceRoutes);  // ✅ บริการอื่นๆ
+app.register(academyRoutes);       // ✅ Pharmacy Academy
 
 
 // --- 3. Start Server ---
