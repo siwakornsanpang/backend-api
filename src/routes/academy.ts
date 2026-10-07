@@ -691,6 +691,7 @@ export async function academyRoutes(app: FastifyInstance) {
       .orderBy(desc(academyReviews.createdAt));
     return rows.map((row) => ({
       id: row.review.id,
+      courseId: row.review.courseId,
       rating: row.review.rating,
       body: row.review.body,
       reviewerName: row.review.reviewerName,
