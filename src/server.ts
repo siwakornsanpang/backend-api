@@ -63,11 +63,15 @@ const allowedOrigins = [
 ].filter((o): o is string => Boolean(o));
 
 app.register(cors, {
-  origin: [
-    'http://localhost:3000',                          // dev
-    'http://localhost:3001',                          // dev alt
-    process.env.FRONTEND_URL || 'http://localhost:3000', // production
-  ],
+  origin: (origin, cb) => {
+    // Non-browser clients (no Origin) or whitelisted frontends
+    const localOrigin = Boolean(origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin));
+    if (!origin || localOrigin || allowedOrigins.includes(origin)) {
+      cb(null, true);
+      return;
+    }
+    cb(null, false);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
